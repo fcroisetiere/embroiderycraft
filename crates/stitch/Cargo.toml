@@ -1,0 +1,14 @@
+[package]
+name = "embcraft-stitch"
+description = "Stitch generators: run, satin (with underlay and pull compensation), tatami fill"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+embcraft-core.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

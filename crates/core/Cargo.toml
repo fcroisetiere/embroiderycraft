@@ -1,0 +1,13 @@
+[package]
+name = "embcraft-core"
+description = "EmbroideryCraft core types: points, stitches, threads, patterns, SVG preview"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+
+[lints]
+workspace = true

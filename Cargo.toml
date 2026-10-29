@@ -1,0 +1,33 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "apps/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+rust-version = "1.85"
+repository = "https://github.com/OWNER/embroiderycraft"
+
+[workspace.dependencies]
+embcraft-core = { path = "crates/core" }
+embcraft-dst = { path = "crates/dst" }
+embcraft-stitch = { path = "crates/stitch" }
+embcraft-design = { path = "crates/design" }
+embcraft-doc = { path = "crates/doc" }
+embcraft-text = { path = "crates/text" }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip"] }
+skrifa = "0.44"
+i_overlay = "9.1"
+thiserror = "2"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"

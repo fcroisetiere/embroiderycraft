@@ -1,0 +1,17 @@
+EmbroideryCraft
+Copyright (c) 2026 The EmbroideryCraft contributors.
+Licensed under the MIT License or the Apache License, Version 2.0, at your option
+(LICENSE-MIT, LICENSE-APACHE).
+
+EmbroideryCraft is an independent project. It is not affiliated with, endorsed by, or derived from
+any commercial embroidery software. Product names mentioned in documentation belong to their owners.
+
+Rust dependencies (serde, serde_json, thiserror) are fetched from crates.io under MIT and/or
+Apache-2.0.
+
+Polygon boolean operations (shape add/subtract/overlap/exclude) use the i_overlay crate
+(https://github.com/iShape-Rust/iOverlay), MIT OR Apache-2.0, as a library dependency.
+
+Product mockups and the realistic stitch view are drawn with the tiny-skia crate
+(https://github.com/linebender/tiny-skia), BSD-3-Clause, as a library dependency. The product
+drawings (garments, belt, cap, bag) are original to EmbroideryCraft.

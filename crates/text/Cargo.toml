@@ -1,0 +1,19 @@
+[package]
+name = "embcraft-text"
+description = "EmbroideryCraft lettering: installed fonts and text outlines as fillable shapes"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+embcraft-core.workspace = true
+serde.workspace = true
+skrifa.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+embcraft-stitch.workspace = true
+
+[lints]
+workspace = true

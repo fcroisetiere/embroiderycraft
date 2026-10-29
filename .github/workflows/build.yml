@@ -1,0 +1,42 @@
+# Builds the macOS app and the Windows program; download them from the run's Artifacts.
+name: build
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libxkbcommon-dev
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: tools/build-macos.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EmbroideryCraft-macos
+          path: dist/*.zip
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo build --release -p embcraft-gui -p embcraft
+      - shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/EmbroideryCraft-windows-x64 | Out-Null
+          Copy-Item target/release/embcraft-gui.exe dist/EmbroideryCraft-windows-x64/EmbroideryCraft.exe
+          Copy-Item target/release/embcraft.exe dist/EmbroideryCraft-windows-x64/
+          Copy-Item docs/WINDOWS.md dist/EmbroideryCraft-windows-x64/README-Windows.md
+          Copy-Item LICENSE-* dist/EmbroideryCraft-windows-x64/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EmbroideryCraft-windows-x64
+          path: dist/EmbroideryCraft-windows-x64

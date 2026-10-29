@@ -1,0 +1,16 @@
+[package]
+name = "embcraft"
+description = "EmbroideryCraft command-line tool"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+embcraft-core.workspace = true
+embcraft-dst.workspace = true
+embcraft-design.workspace = true
+embcraft-stitch.workspace = true
+
+[lints]
+workspace = true

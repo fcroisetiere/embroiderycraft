@@ -1,0 +1,20 @@
+[package]
+name = "embcraft-doc"
+description = "EmbroideryCraft editable document: objects, selection, undo/redo, hit-testing and drawing tools (UI independent)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+embcraft-core.workspace = true
+embcraft-stitch.workspace = true
+embcraft-design.workspace = true
+embcraft-text.workspace = true
+i_overlay.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
