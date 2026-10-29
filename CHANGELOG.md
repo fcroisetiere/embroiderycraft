@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New Help menu: the online manual (also with F1), keyboard shortcuts, answers to common problems, a bug report form with your version filled in, the download page for new versions, a donation link and an About window.
+
 ## 0.1.0 (2026-10-28)
 
 First public release.
