@@ -122,6 +122,9 @@ pub fn shortcuts(app: &mut App, ctx: &egui::Context) {
     if key(ctx, Modifiers::NONE, Key::Num0) {
         app.fit_pending = true;
     }
+    if key(ctx, Modifiers::NONE, Key::F1) {
+        ctx.open_url(egui::OpenUrl::new_tab(crate::help::manual("")));
+    }
     if app.machine.is_some() {
         if key(ctx, Modifiers::NONE, Key::Escape) {
             app.close_machine_file();
@@ -502,6 +505,7 @@ pub fn top_menu(app: &mut App, root: &mut egui::Ui) {
                     });
                 });
             });
+            crate::help::menu(app, ui);
         });
     });
 }

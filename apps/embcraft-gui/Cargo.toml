@@ -13,7 +13,7 @@ embcraft-design.workspace = true
 embcraft-doc.workspace = true
 embcraft-stitch.workspace = true
 embcraft-text.workspace = true
-eframe = { version = "0.36", default-features = false, features = ["glow", "default_fonts", "x11", "wayland"] }
+eframe = { version = "0.36", default-features = false, features = ["glow", "default_fonts", "x11", "wayland", "links"] }
 egui = "0.36"
 egui-file-dialog = "0.15"
 tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd"] }
