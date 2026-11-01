@@ -29,6 +29,8 @@ than programmers. Be warm and brief, and never promise a date.
 5. Pull request: title in plain words, body with what changed, how it was tested, and `Fixes #<n>`.
 6. If the change adds or changes a user-visible feature, say so in the pull request: the website's
    feature list (`site/index.html` and French in `site/assets/i18n.js`) and the README need updating too.
+   Every user-visible change also goes under "In testing" on the website's `site/changes.html`
+   (English and French); offer that text in the pull request.
 
 ## Rules that don't change
 - Library code never panics on bad input: no `unwrap`/`expect`/`panic!` (clippy enforces it).
@@ -48,6 +50,8 @@ Versions are `0.MINOR.PATCH`: PATCH for fixes only, MINOR when there are new fea
    `EmbroideryCraft-X.Y.Z-windows-x64.zip`, `EmbroideryCraft-X.Y.Z-macos.zip`,
    `EmbroideryCraft-X.Y.Z-source.zip` (`git archive --prefix=EmbroideryCraft-X.Y.Z/ vX.Y.Z`).
    The website download buttons depend on these exact names.
-3. Remind the maintainer to set `version` and `releaseDate` in the website's `site/config.js` and redeploy.
+3. Remind the maintainer to update the website and redeploy: `version` and `releaseDate` in
+   `site/config.js`, and the public version history `site/changes.html` (turn "In testing" into the
+   new version and date, in English and French). Offer the text for both languages.
 4. Comment on the issues fixed in this release ("Fixed in version X.Y.Z, download it at
    https://embroiderycraft.org/download.html") and close them.
