@@ -14,6 +14,9 @@
 - Text tool: after clicking where the lettering goes, typing goes straight into the text box and
   replaces the sample "Text" (letters no longer switch tools). The box keeps the keyboard until
   you click elsewhere.
+- Measurements: the selected object's width and height are shown beside it on the canvas (live
+  while resizing) and as its size in Properties. View › Units switches sizes and positions
+  between millimetres and inches; the choice is remembered. Stitch settings stay in millimetres.
 
 ## 0.1.0 (2026-10-28)
 

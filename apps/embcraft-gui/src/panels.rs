@@ -473,6 +473,18 @@ pub fn top_menu(app: &mut App, root: &mut egui::Ui) {
                     .on_hover_text("The hoop outline, to check the design fits");
                 ui.checkbox(&mut app.realistic, "Realistic stitches")
                     .on_hover_text("Draw stitches as shaded thread, as they look sewn");
+                ui.menu_button("Units", |ui| {
+                    let inches = crate::units::inches();
+                    if ui.radio(!inches, "Millimetres (mm)").clicked() {
+                        crate::units::set_inches(false);
+                        ui.close();
+                    }
+                    if ui.radio(inches, "Inches (in)").clicked() {
+                        crate::units::set_inches(true);
+                        ui.close();
+                    }
+                    theme::hint(ui, "For sizes and positions. Stitch settings stay in millimetres.");
+                });
                 if ui.button("Show on a product…")
                     .on_hover_text("See the design on a gi, belt, polo, cap… at real size")
                     .clicked() {
@@ -497,7 +509,7 @@ pub fn top_menu(app: &mut App, root: &mut egui::Ui) {
                 ui.menu_button("Hoop size", |ui| {
                     for (w, h) in HOOPS {
                         let on = app.hoop == (w, h);
-                        if ui.radio(on, format!("{w:.0} × {h:.0} mm")).clicked() {
+                        if ui.radio(on, crate::units::size_rough(w, h)).clicked() {
                             app.hoop = (w, h);
                             ui.close();
                         }
@@ -698,8 +710,8 @@ pub fn toolbar(app: &mut App, root: &mut egui::Ui) {
                     app.show_hoop,
                     true,
                     &format!(
-                        "Show the {:.0} × {:.0} mm hoop (change it in View)",
-                        app.hoop.0, app.hoop.1
+                        "Show the {} hoop (change it in View)",
+                        crate::units::size_rough(app.hoop.0, app.hoop.1)
                     ),
                 )
                 .clicked()
@@ -1229,6 +1241,17 @@ fn right_contents(app: &mut App, ui: &mut egui::Ui) {
                 );
             }
             let n = app.ed.selection().len();
+            if let Some((lo, hi)) = app.ed.selection_bounds() {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Size").strong());
+                    ui.label(crate::units::size(hi.x - lo.x, hi.y - lo.y))
+                        .on_hover_text(if n > 1 {
+                            "Width × height of the box around the selected objects"
+                        } else {
+                            "Width × height of the object (change units in View › Units)"
+                        });
+                });
+            }
             if n > 1 {
                 theme::hint(
                     ui,
@@ -1665,12 +1688,6 @@ fn right_contents(app: &mut App, ui: &mut egui::Ui) {
                     "Subtract cuts the shapes on top out of the bottom one (the one sewn first).",
                 );
             }
-            if let Some((lo, hi)) = app.ed.selection_bounds() {
-                theme::hint(
-                    ui,
-                    &format!("Size {:.1} × {:.1} mm", hi.x - lo.x, hi.y - lo.y),
-                );
-            }
         }
     }
 }
@@ -1696,7 +1713,7 @@ fn machine_info(ui: &mut egui::Ui, p: &embcraft_core::Pattern) {
             ui.end_row();
             if let Some((lo, hi)) = p.bounds() {
                 ui.label("Size");
-                ui.label(format!("{:.1} × {:.1} mm", hi.x - lo.x, hi.y - lo.y));
+                ui.label(crate::units::size(hi.x - lo.x, hi.y - lo.y));
                 ui.end_row();
             }
             ui.label("Longest stitch");
@@ -1823,7 +1840,7 @@ pub fn status_bar(app: &mut App, root: &mut egui::Ui) {
 /// Right-hand side of the status bar, laid out right to left.
 fn status_figures(app: &App, ui: &mut egui::Ui) {
     if let Some(c) = app.cursor_mm {
-        ui.label(format!("x {:.1}  y {:.1} mm", c.x, c.y));
+        ui.label(crate::units::position(c.x, c.y));
     }
     ui.separator();
     ui.label(format!("{:.0} %", app.view.scale * 100.0 / 3.78));
@@ -1848,7 +1865,7 @@ fn status_figures(app: &App, ui: &mut egui::Ui) {
             ui.colored_label(theme::WARN, "Outside the hoop");
             ui.separator();
         }
-        ui.label(format!("{:.1} × {:.1} mm", hi.x - lo.x, hi.y - lo.y));
+        ui.label(crate::units::size(hi.x - lo.x, hi.y - lo.y));
         ui.separator();
     }
     ui.label(format!("{} trims", p.trims()));

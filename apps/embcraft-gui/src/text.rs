@@ -707,30 +707,13 @@ struct Actions {
 }
 
 /// Where small preferences are kept: next to the fonts folder.
-fn settings_path() -> PathBuf {
-    let fonts = embcraft_doc::font::fonts_dir();
-    fonts
-        .parent()
-        .map_or_else(|| PathBuf::from("settings.txt"), |d| d.join("settings.txt"))
-}
-
 /// Whether lettering was docked in the right panel last time.
 pub fn load_docked() -> bool {
-    std::fs::read_to_string(settings_path())
-        .is_ok_and(|s| s.lines().any(|l| l.trim() == "lettering=docked"))
+    crate::settings::get("lettering").as_deref() == Some("docked")
 }
 
 fn save_docked(docked: bool) {
-    let path = settings_path();
-    if let Some(dir) = path.parent() {
-        let _ = std::fs::create_dir_all(dir);
-    }
-    let line = if docked {
-        "lettering=docked"
-    } else {
-        "lettering=window"
-    };
-    let _ = std::fs::write(path, format!("{line}\n"));
+    crate::settings::set("lettering", if docked { "docked" } else { "window" });
 }
 
 /// Height for the font list when `avail` is the room for all the contents: what the other

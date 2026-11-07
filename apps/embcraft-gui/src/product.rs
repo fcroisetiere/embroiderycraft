@@ -235,10 +235,12 @@ pub fn picker(app: &mut App, ctx: &egui::Context) {
                             let r = ui
                                 .add(egui::Button::image(img).selected(current == Some(*k)))
                                 .on_hover_text(format!(
-                                    "{}: designs up to about {:.0} × {:.0} mm",
+                                    "{}: designs up to about {}",
                                     k.label(),
-                                    k.template().area_size.0,
-                                    k.template().area_size.1
+                                    crate::units::size_rough(
+                                        k.template().area_size.0,
+                                        k.template().area_size.1
+                                    )
                                 ));
                             if r.clicked() {
                                 picked = Some(*k);
@@ -345,7 +347,9 @@ pub fn panel(app: &mut App, ui: &mut egui::Ui) {
             ui.colored_label(
                 theme::WARN,
                 format!(
-                    "The design is {w:.0} × {h:.0} mm; here designs are usually at most {aw:.0} × {ah:.0} mm."
+                    "The design is {}; here designs are usually at most {}.",
+                    crate::units::size_rough(w, h),
+                    crate::units::size_rough(aw, ah)
                 ),
             );
         }
@@ -468,7 +472,8 @@ pub fn export(app: &mut App, path: &Path) -> Result<String, String> {
         }
     }
     let info = format!(
-        "Design {dw:.0} × {dh:.0} mm   ·   {} stitches   ·   {} thread colour{}",
+        "Design {}   ·   {} stitches   ·   {} thread colour{}",
+        crate::units::size_rough(dw, dh),
         pat.stitch_count(),
         threads.len(),
         if threads.len() == 1 { "" } else { "s" }

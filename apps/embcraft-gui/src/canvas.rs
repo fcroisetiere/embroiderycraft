@@ -352,11 +352,25 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         if let Some((lo, hi)) = app.ed.selection_bounds() {
             let a = app.view.to_screen(rect, lo);
             let b = app.view.to_screen(rect, hi);
+            let r = Rect::from_two_pos(a, b);
             painter.rect_stroke(
-                Rect::from_two_pos(a, b),
+                r,
                 0.0,
                 Stroke::new(1.0, theme::ACCENT.gamma_multiply(0.7)),
                 egui::StrokeKind::Middle,
+            );
+            // its width under the box and its height beside it, updated while resizing
+            measure_label(
+                &painter,
+                egui::pos2(r.center().x, r.max.y + 12.0),
+                egui::Align2::CENTER_TOP,
+                &crate::units::len(hi.x - lo.x),
+            );
+            measure_label(
+                &painter,
+                egui::pos2(r.max.x + 12.0, r.center().y),
+                egui::Align2::LEFT_CENTER,
+                &crate::units::len(hi.y - lo.y),
             );
             for (h, p) in embcraft_doc::selection_handles(lo, hi, view_scale as f64) {
                 let c = app.view.to_screen(rect, p);
@@ -701,9 +715,8 @@ fn describe(app: &App, id: embcraft_doc::ObjectId) -> Option<String> {
         .unwrap_or(0);
     if let Some((lo, hi)) = o.bounds() {
         lines.push(format!(
-            "{:.1} × {:.1} mm, {stitches} stitches",
-            hi.x - lo.x,
-            hi.y - lo.y
+            "{}, {stitches} stitches",
+            crate::units::size(hi.x - lo.x, hi.y - lo.y)
         ));
     }
     if let Some(b) = o.lettering.and_then(|b| doc.letterings.get(&b)) {
@@ -836,4 +849,18 @@ fn thread_stitch(painter: &egui::Painter, a: Pos2, b: Pos2, width: f32, c: Color
             ),
         );
     }
+}
+
+/// A small measurement tag on the canvas, on a pale background so it reads over stitches.
+fn measure_label(painter: &egui::Painter, at: Pos2, align: egui::Align2, text: &str) {
+    let galley = painter.layout_no_wrap(
+        text.to_string(),
+        egui::FontId::proportional(11.5),
+        theme::ACCENT,
+    );
+    let r = align
+        .anchor_size(at, galley.size())
+        .expand2(Vec2::new(4.0, 1.5));
+    painter.rect_filled(r, 3.0, Color32::from_white_alpha(225));
+    painter.galley(r.min + Vec2::new(4.0, 1.5), galley, theme::ACCENT);
 }
