@@ -12,6 +12,7 @@ use embcraft_doc::lettering::{Affine, FontCache, LetterFont, LetterStitch, Lette
 use embcraft_doc::monogram::{self, Frame, MonoLayout, Monogram};
 use embcraft_doc::{ObjectId, Tool};
 use embcraft_text::{Baseline, FontFace, PathAlign, Shape, TextOptions, is_cjk};
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 /// Computer fonts tried first, in order, when the window opens: fonts with Kanji, Kana and
@@ -93,6 +94,15 @@ pub struct TextDialog {
     /// Initials set as a monogram instead of plain text.
     mono_mode: bool,
     mono: Monogram,
+    /// The font follows the text until one is picked by hand (see [`TextDialog::choose_font`]).
+    font_auto: bool,
+    /// The computer font used when no EmbroideryCraft font has every character.
+    fallback: Option<LetterFont>,
+    /// Installed EmbroideryCraft fonts, and the characters each has once loaded.
+    ec_fonts: Vec<(String, PathBuf)>,
+    ec_cover: Option<Vec<(LetterFont, BTreeSet<char>)>>,
+    /// The text the font was last chosen for.
+    chosen_for: String,
 }
 
 pub(crate) fn preferred_font(fonts: &[FontFace]) -> Option<FontFace> {
@@ -113,14 +123,14 @@ const SAMPLE: &str = "Text";
 
 impl TextDialog {
     pub fn new(at: Point, fonts: &[FontFace], ec_fonts: &[(String, PathBuf)]) -> Self {
-        let font = ec_fonts
-            .first()
-            .map(|(n, p)| LetterFont::Ec {
+        let fallback = preferred_font(fonts).map(|f| LetterFont::from_face(&f));
+        let font = fallback.clone().or_else(|| {
+            ec_fonts.first().map(|(n, p)| LetterFont::Ec {
                 name: n.clone(),
                 path: p.clone(),
             })
-            .or_else(|| preferred_font(fonts).map(|f| LetterFont::from_face(&f)));
-        Self {
+        });
+        let mut d = Self {
             at,
             text: SAMPLE.into(),
             font,
@@ -148,6 +158,50 @@ impl TextDialog {
             remove_guide: true,
             mono_mode: false,
             mono: Monogram::default(),
+            font_auto: true,
+            fallback,
+            ec_fonts: ec_fonts.to_vec(),
+            ec_cover: None,
+            chosen_for: String::new(),
+        };
+        d.choose_font();
+        d
+    }
+
+    /// Until a font is picked by hand, use the first EmbroideryCraft font that has every
+    /// character typed (its satin is worked out), else the usual computer font. A new lettering
+    /// used to start in the first EmbroideryCraft font even when it lacked the letters (a
+    /// Katakana font showed nothing for "Karate").
+    fn choose_font(&mut self) {
+        if !self.font_auto || self.text == self.chosen_for {
+            return;
+        }
+        self.chosen_for = self.text.clone();
+        let need: BTreeSet<char> = self.text.chars().filter(|c| !c.is_whitespace()).collect();
+        if need.is_empty() {
+            return;
+        }
+        let list = &self.ec_fonts;
+        let cover = self.ec_cover.get_or_insert_with(|| {
+            list.iter()
+                .filter_map(|(n, p)| {
+                    let f = embcraft_doc::font::EcFont::load(p).ok()?;
+                    let font = LetterFont::Ec {
+                        name: n.clone(),
+                        path: p.clone(),
+                    };
+                    Some((font, f.glyphs.keys().copied().collect()))
+                })
+                .collect()
+        });
+        let pick = cover
+            .iter()
+            .find(|(_, has)| need.is_subset(has))
+            .map(|(f, _)| f.clone())
+            .or_else(|| self.fallback.clone());
+        if pick.is_some() && pick != self.font {
+            self.font = pick;
+            self.reveal_font = true;
         }
     }
 
@@ -173,6 +227,7 @@ impl TextDialog {
             transform: b.transform,
             join: s.join_runs.is_some(),
             join_max: s.join_runs.unwrap_or(8.0),
+            font_auto: false,
             ..Self::new(s.at, &[], &[])
         })
     }
@@ -195,6 +250,7 @@ impl TextDialog {
 
     /// Recompute the letters when anything changed.
     fn update_preview(&mut self) {
+        self.choose_font();
         // Kanji, Kana and Hangul are sized by their full character cell
         self.opts.size_is_em = self.text.chars().any(is_cjk);
         self.opts.baseline = match self.arc {
@@ -307,6 +363,7 @@ fn font_list(
                 }
                 if r.clicked() {
                     dlg.font = Some(f);
+                    dlg.font_auto = false;
                 }
             };
             if ec_fonts.iter().any(|(n, _)| matches(n)) {
