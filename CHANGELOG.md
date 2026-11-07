@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Measurements: the selected object's width and height are shown beside it on the canvas (live
+  while resizing) and as its size in Properties. View › Units switches sizes and positions
+  between millimetres and inches; the choice is remembered. Stitch settings stay in millimetres.
+
 ## 0.1.0 (2026-10-28)
 
 First public release.
