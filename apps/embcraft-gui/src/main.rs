@@ -7,6 +7,7 @@ mod backdrop;
 mod canvas;
 mod font_preview;
 mod fonts;
+mod help;
 mod icons;
 mod mockup;
 mod panels;
@@ -165,6 +166,8 @@ pub struct App {
     /// The product under the design, drawn for display; the picker window and its pictures.
     pub product_tex: Option<product::Texture>,
     pub product_picker: bool,
+    /// The About window is open.
+    pub about: bool,
     pub product_thumbs: Vec<egui::TextureHandle>,
     /// Draw stitches as shaded thread.
     pub realistic: bool,
@@ -392,6 +395,7 @@ impl App {
             team: None,
             product_tex: None,
             product_picker: false,
+            about: false,
             product_thumbs: Vec::new(),
             realistic: false,
             text_docked: text::load_docked(),
@@ -890,6 +894,7 @@ impl eframe::App for App {
         text::show(self, ctx);
         teamnames::show(self, ctx);
         product::picker(self, ctx);
+        help::about(self, ctx);
         fonts::show_maker(self, ctx);
         panels::confirm_dialog(self, ctx);
         self.handle_dialog(ctx);
