@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- New lettering starts in a font that has the letters typed, and follows the text until you pick
+  a font: the first EmbroideryCraft font with every character, else the usual computer font. (It
+  used to start in the first EmbroideryCraft font, so Latin text showed nothing in a Katakana font.)
+
 ## 0.1.0 (2026-10-28)
 
 First public release.
