@@ -11,9 +11,11 @@ mod icons;
 mod mockup;
 mod panels;
 mod product;
+mod settings;
 mod teamnames;
 mod text;
 mod theme;
+mod units;
 
 use eframe::egui;
 use egui_file_dialog::FileDialog;
@@ -394,7 +396,10 @@ impl App {
             product_picker: false,
             product_thumbs: Vec::new(),
             realistic: false,
-            text_docked: text::load_docked(),
+            text_docked: {
+                units::load();
+                text::load_docked()
+            },
             lettering_tab: false,
             dialog: FileDialog::new(),
             pending: None,
