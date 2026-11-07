@@ -13,7 +13,7 @@ pub use autosatin::{
 };
 pub use fill::{FillParams, FillUnderlay, fill, tatami};
 pub use path::{Arc, dedup, path_length, resample};
-pub use satin::{SatinParams, SatinUnderlay, rails_from_centerline, satin};
+pub use satin::{SatinParams, SatinUnderlay, column, column_rails, rails_from_centerline, satin};
 
 use embcraft_core::Point;
 use serde::{Deserialize, Serialize};

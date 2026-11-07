@@ -3,7 +3,7 @@ use crate::{App, Confirm, theme};
 use eframe::egui::{self, Color32, Key, Modifiers, RichText};
 use embcraft_core::Point;
 use embcraft_doc::{Align, Combine, EditObject, StitchStyle, Tool};
-use embcraft_stitch::{FillUnderlay, SatinUnderlay, TackDown};
+use embcraft_stitch::{FillUnderlay, SatinParams, SatinUnderlay, TackDown};
 
 /// Hoop sizes (mm) offered in the View menu; any other size can be typed in.
 const HOOPS: [(f64, f64); 8] = [
@@ -30,6 +30,7 @@ fn tool_icon(t: Tool) -> Icon {
         Tool::Node => Icon::Node,
         Tool::Polyline => Icon::Polyline,
         Tool::Curve => Icon::Curve,
+        Tool::Column => Icon::Column,
         Tool::Rectangle => Icon::Rectangle,
         Tool::Ellipse => Icon::Ellipse,
         Tool::Freehand => Icon::Freehand,
@@ -46,6 +47,7 @@ fn tool_key(t: Tool) -> &'static str {
         Tool::Node => "N",
         Tool::Polyline => "P",
         Tool::Curve => "B",
+        Tool::Column => "C",
         Tool::Rectangle => "R",
         Tool::Ellipse => "E",
         Tool::Freehand => "F",
@@ -97,10 +99,19 @@ fn slider_tip(key: &str) -> &'static str {
     }
 }
 
+/// Settings of a satin, whether a constant-width line or a column digitized by pairs.
+fn satin_params(o: &mut EditObject) -> Option<&mut SatinParams> {
+    match &mut o.style {
+        StitchStyle::Satin { params, .. } | StitchStyle::Column { params, .. } => Some(params),
+        _ => None,
+    }
+}
+
 fn style_icon(s: &StitchStyle) -> Icon {
     match s {
         StitchStyle::Run { .. } => Icon::Run,
         StitchStyle::Satin { .. } => Icon::Satin,
+        StitchStyle::Column { .. } => Icon::Column,
         StitchStyle::Fill { .. } => Icon::Fill,
         StitchStyle::AutoSatin { .. } => Icon::AutoSatin,
         StitchStyle::Applique { .. } => Icon::Applique,
@@ -134,7 +145,10 @@ pub fn shortcuts(app: &mut App, ctx: &egui::Context) {
     if key(ctx, cmd | Modifiers::SHIFT, Key::Z) || key(ctx, cmd, Key::Y) {
         app.ed.redo();
     } else if key(ctx, cmd, Key::Z) {
-        app.ed.undo();
+        // while drawing it takes back the last point, like Backspace, not the previous shape
+        if !app.tools.undo_point() && !app.tools.is_drawing() {
+            app.ed.undo();
+        }
     }
     if key(ctx, cmd, Key::S) {
         app.save();
@@ -177,6 +191,7 @@ pub fn shortcuts(app: &mut App, ctx: &egui::Context) {
             Tool::Node => Key::N,
             Tool::Polyline => Key::P,
             Tool::Curve => Key::B,
+            Tool::Column => Key::C,
             Tool::Rectangle => Key::R,
             Tool::Ellipse => Key::E,
             Tool::Freehand => Key::F,
@@ -1229,55 +1244,60 @@ fn right_contents(app: &mut App, ui: &mut egui::Ui) {
                 }
             }
 
-            // stitch type as four icon buttons, two per row
-            ui.horizontal_wrapped(|ui| {
-                let width = match &first.style {
-                    StitchStyle::Satin { width, .. } => *width,
-                    _ => 3.0,
-                };
-                let w = (ui.available_width() - 8.0) / 2.0;
-                for (icon, label) in [
-                    (Icon::Run, "Run"),
-                    (Icon::Satin, "Satin"),
-                    (Icon::Fill, "Fill"),
-                    (Icon::AutoSatin, "Auto satin"),
-                    (Icon::Applique, "Appliqué"),
-                ] {
-                    let on = style_icon(&first.style) == icon;
-                    if icons::labeled(ui, icon, label, "", on, w)
-                        .on_hover_text(style_tip(icon))
-                        .clicked()
-                        && !on
-                    {
-                        app.ed.checkpoint();
-                        let sel = app.ed.selection().to_vec();
-                        for o in app
-                            .ed
-                            .doc_mut()
-                            .objects
-                            .iter_mut()
-                            .filter(|o| sel.contains(&o.id))
+            // stitch type as four icon buttons, two per row; a satin column keeps its own type,
+            // since its points are pairs across the column
+            if matches!(first.style, StitchStyle::Column { .. }) {
+                theme::hint(ui, "Satin column: edit its points with the Nodes tool (N).");
+            } else {
+                ui.horizontal_wrapped(|ui| {
+                    let width = match &first.style {
+                        StitchStyle::Satin { width, .. } => *width,
+                        _ => 3.0,
+                    };
+                    let w = (ui.available_width() - 8.0) / 2.0;
+                    for (icon, label) in [
+                        (Icon::Run, "Run"),
+                        (Icon::Satin, "Satin"),
+                        (Icon::Fill, "Fill"),
+                        (Icon::AutoSatin, "Auto satin"),
+                        (Icon::Applique, "Appliqué"),
+                    ] {
+                        let on = style_icon(&first.style) == icon;
+                        if icons::labeled(ui, icon, label, "", on, w)
+                            .on_hover_text(style_tip(icon))
+                            .clicked()
+                            && !on
                         {
-                            o.style = match icon {
-                                Icon::Run => StitchStyle::run(),
-                                Icon::Satin => StitchStyle::satin(width),
-                                Icon::AutoSatin => {
-                                    o.closed = true;
-                                    StitchStyle::auto_satin()
-                                }
-                                Icon::Applique => {
-                                    o.closed = true;
-                                    StitchStyle::applique()
-                                }
-                                _ => {
-                                    o.closed = true;
-                                    StitchStyle::fill()
-                                }
-                            };
+                            app.ed.checkpoint();
+                            let sel = app.ed.selection().to_vec();
+                            for o in app
+                                .ed
+                                .doc_mut()
+                                .objects
+                                .iter_mut()
+                                .filter(|o| sel.contains(&o.id))
+                            {
+                                o.style = match icon {
+                                    Icon::Run => StitchStyle::run(),
+                                    Icon::Satin => StitchStyle::satin(width),
+                                    Icon::AutoSatin => {
+                                        o.closed = true;
+                                        StitchStyle::auto_satin()
+                                    }
+                                    Icon::Applique => {
+                                        o.closed = true;
+                                        StitchStyle::applique()
+                                    }
+                                    _ => {
+                                        o.closed = true;
+                                        StitchStyle::fill()
+                                    }
+                                };
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
 
             match &first.style {
                 StitchStyle::Run { params } => {
@@ -1305,20 +1325,22 @@ fn right_contents(app: &mut App, ui: &mut egui::Ui) {
                         });
                     }
                 }
-                StitchStyle::Satin { width, params } => {
-                    slider!(
-                        ui,
-                        app,
-                        "satin w",
-                        "Width mm",
-                        *width,
-                        0.8..=12.0,
-                        |o: &mut EditObject, v| if let StitchStyle::Satin { width, .. } =
-                            &mut o.style
-                        {
-                            *width = v
-                        }
-                    );
+                StitchStyle::Satin { params, .. } | StitchStyle::Column { params, .. } => {
+                    if let StitchStyle::Satin { width, .. } = &first.style {
+                        slider!(
+                            ui,
+                            app,
+                            "satin w",
+                            "Width mm",
+                            *width,
+                            0.8..=12.0,
+                            |o: &mut EditObject, v| if let StitchStyle::Satin { width, .. } =
+                                &mut o.style
+                            {
+                                *width = v
+                            }
+                        );
+                    }
                     slider!(
                         ui,
                         app,
@@ -1326,9 +1348,7 @@ fn right_contents(app: &mut App, ui: &mut egui::Ui) {
                         "Spacing mm",
                         params.spacing,
                         0.2..=1.0,
-                        |o: &mut EditObject, v| if let StitchStyle::Satin { params, .. } =
-                            &mut o.style
-                        {
+                        |o: &mut EditObject, v| if let Some(params) = satin_params(o) {
                             params.spacing = v
                         }
                     );
@@ -1339,9 +1359,7 @@ fn right_contents(app: &mut App, ui: &mut egui::Ui) {
                         "Pull comp mm",
                         params.pull_comp,
                         0.0..=1.0,
-                        |o: &mut EditObject, v| if let StitchStyle::Satin { params, .. } =
-                            &mut o.style
-                        {
+                        |o: &mut EditObject, v| if let Some(params) = satin_params(o) {
                             params.pull_comp = v
                         }
                     );
@@ -1368,7 +1386,7 @@ fn right_contents(app: &mut App, ui: &mut egui::Ui) {
                         .on_hover_text("Stitches sewn first under the satin to hold the fabric and lift the column");
                     if u != params.underlay {
                         app.ed.edit_selected_keyed("satin ul", |o| {
-                            if let StitchStyle::Satin { params, .. } = &mut o.style {
+                            if let Some(params) = satin_params(o) {
                                 params.underlay = u
                             }
                         });
