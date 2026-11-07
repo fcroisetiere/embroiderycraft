@@ -79,7 +79,10 @@ pub struct TextDialog {
     key: String,
     cache: FontCache,
     error: Option<String>,
+    /// The text box keeps the keyboard until the next click (see [`contents`]).
     focus: bool,
+    /// The window was opened by a click this frame (that click must not end `focus`).
+    just_opened: bool,
     reveal_font: bool,
     /// Join letters with running stitches, up to `join_max` mm apart.
     join: bool,
@@ -105,6 +108,9 @@ pub(crate) fn preferred_font(fonts: &[FontFace]) -> Option<FontFace> {
         .or_else(|| fonts.first().cloned())
 }
 
+/// What a new lettering starts with, selected so typing replaces it.
+const SAMPLE: &str = "Text";
+
 impl TextDialog {
     pub fn new(at: Point, fonts: &[FontFace], ec_fonts: &[(String, PathBuf)]) -> Self {
         let font = ec_fonts
@@ -116,7 +122,7 @@ impl TextDialog {
             .or_else(|| preferred_font(fonts).map(|f| LetterFont::from_face(&f)));
         Self {
             at,
-            text: "Text".into(),
+            text: SAMPLE.into(),
             font,
             filter: String::new(),
             opts: TextOptions {
@@ -134,6 +140,7 @@ impl TextDialog {
             cache: FontCache::default(),
             error: None,
             focus: true,
+            just_opened: true,
             reveal_font: true,
             join: true,
             join_max: 8.0,
@@ -384,9 +391,27 @@ fn contents(ui: &mut egui::Ui, app: &mut App, list_h: f32, acts: &mut Actions) {
     if dlg.mono_mode {
         monogram_settings(ui, dlg);
     }
-    if dlg.focus {
-        r.request_focus();
+    // Ready to type: the box keeps the keyboard until the next click anywhere. Focus given
+    // once was not enough: egui drops it while a new window is still being measured, and the
+    // letters then went to the tool shortcuts. New lettering keeps its sample "Text" selected
+    // until the first key, which replaces it.
+    if dlg.focus && !std::mem::take(&mut dlg.just_opened) && ui.input(|i| i.pointer.any_pressed()) {
         dlg.focus = false;
+    }
+    if dlg.focus && !r.has_focus() {
+        r.request_focus();
+        // take it now, not on the next key
+        ui.ctx().request_repaint();
+    }
+    if dlg.focus && dlg.editing.is_none() && dlg.text == SAMPLE {
+        if let Some(mut state) = egui::TextEdit::load_state(ui.ctx(), r.id) {
+            let all = egui::text::CCursorRange::two(
+                egui::text::CCursor::new(0),
+                egui::text::CCursor::new(SAMPLE.chars().count()),
+            );
+            state.cursor.set_char_range(Some(all));
+            state.store(ui.ctx(), r.id);
+        }
     }
     theme::section(ui, "Font");
     if let Some(f) = &dlg.font {

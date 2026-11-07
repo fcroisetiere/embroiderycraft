@@ -11,6 +11,9 @@
   or on a point to remove its pair. Works in the font editor too.
 - While drawing a shape, Ctrl+Z (⌘Z) takes back the last point instead of undoing the previous
   shape. (#5)
+- Text tool: after clicking where the lettering goes, typing goes straight into the text box and
+  replaces the sample "Text" (letters no longer switch tools). The box keeps the keyboard until
+  you click elsewhere.
 
 ## 0.1.0 (2026-10-28)
 
