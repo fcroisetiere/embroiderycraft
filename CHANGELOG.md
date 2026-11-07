@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- New **Satin column** tool (C): click pairs of points, one on each edge of the column, and each
+  pair sets the stitch angle there, so stitches turn smoothly around curves. Click for a corner,
+  click and drag for a curve point. With the Nodes tool, double-click inside a column to add a pair
+  or on a point to remove its pair. Works in the font editor too.
+- While drawing a shape, Ctrl+Z (⌘Z) takes back the last point instead of undoing the previous
+  shape. (#5)
+
 ## 0.1.0 (2026-10-28)
 
 First public release.
