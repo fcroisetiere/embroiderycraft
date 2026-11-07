@@ -38,6 +38,15 @@ pub enum StitchStyle {
         #[serde(default)]
         params: FillParams,
     },
+    /// A satin column digitized as pairs of points, one on each side: the object's points
+    /// alternate between the two edges, and each pair sets the stitch angle there.
+    Column {
+        #[serde(default)]
+        params: SatinParams,
+        /// `curves[i]`: the edge passes smoothly through point `i` (else it is a corner).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        curves: Vec<bool>,
+    },
     /// A filled shape sewn as satin across its strokes (lettering).
     AutoSatin {
         #[serde(default)]
@@ -70,6 +79,12 @@ impl StitchStyle {
             params: SatinParams::default(),
         }
     }
+    pub fn column() -> Self {
+        StitchStyle::Column {
+            params: SatinParams::default(),
+            curves: Vec::new(),
+        }
+    }
     pub fn fill() -> Self {
         StitchStyle::Fill {
             params: FillParams::default(),
@@ -92,6 +107,7 @@ impl StitchStyle {
             StitchStyle::Applique { .. } => "Appliqué",
             StitchStyle::Run { .. } => "Run",
             StitchStyle::Satin { .. } => "Satin",
+            StitchStyle::Column { .. } => "Satin column",
             StitchStyle::Fill { .. } => "Fill (tatami)",
             StitchStyle::AutoSatin { .. } => "Satin (auto)",
         }
@@ -210,6 +226,16 @@ impl EditObject {
             .or(Some(first))
     }
 
+    /// The two edges of a satin column, sampled with matching points (see
+    /// [`embcraft_stitch::column_rails`]); `None` for other objects or fewer than two pairs.
+    pub fn column_rails(&self) -> Option<(Vec<Point>, Vec<Point>)> {
+        let StitchStyle::Column { curves, .. } = &self.style else {
+            return None;
+        };
+        let (a, b) = embcraft_stitch::column_rails(&self.points, curves);
+        (a.len() >= 2).then_some((a, b))
+    }
+
     /// Stored satin regions, if any and still matching the outline.
     pub fn satin_regions(&self) -> Option<&[SatinRegion]> {
         match &self.style {
@@ -291,6 +317,13 @@ impl EditObject {
                 (pts.len() >= 2).then(|| ObjectKind::Satin {
                     center: pts,
                     width: *width,
+                    params: params.clone(),
+                })
+            }
+            StitchStyle::Column { params, .. } => {
+                self.column_rails().map(|(a, b)| ObjectKind::Column {
+                    a,
+                    b,
                     params: params.clone(),
                 })
             }

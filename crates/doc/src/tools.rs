@@ -26,14 +26,17 @@ pub enum Tool {
     Start,
     /// Drag across a stroke of an auto-satin shape to set which way its stitches run there.
     Direction,
+    /// Satin column digitized by clicking pairs of points, one on each edge.
+    Column,
 }
 
 impl Tool {
-    pub const ALL: [Tool; 11] = [
+    pub const ALL: [Tool; 12] = [
         Tool::Select,
         Tool::Node,
         Tool::Polyline,
         Tool::Curve,
+        Tool::Column,
         Tool::Rectangle,
         Tool::Ellipse,
         Tool::Freehand,
@@ -55,6 +58,7 @@ impl Tool {
             Tool::Hole => "Hole",
             Tool::Start => "Start point",
             Tool::Direction => "Satin direction",
+            Tool::Column => "Satin column",
         }
     }
 
@@ -87,6 +91,9 @@ impl Tool {
             }
             Tool::Direction => {
                 "For auto-satin shapes and lettering: each coloured part shows which way its stitches run. Drag across a stroke to change that part's direction."
+            }
+            Tool::Column => {
+                "Satin column. Click points on alternate sides of the column, left edge then right edge: each pair sets the stitch angle there. Click for a corner, click and drag for a curve. Finish with a double-click or Enter."
             }
         }
     }
@@ -180,6 +187,10 @@ pub struct Overlay {
     pub direction: Option<(Point, Point)>,
     /// Box-selection rectangle.
     pub marquee: Option<(Point, Point)>,
+    /// Extra guide lines (a satin column's edges and stitch angles while it is drawn).
+    pub lines: Vec<Vec<Point>>,
+    /// Clicked points of a satin column, `true` for curve points.
+    pub nodes: Vec<(Point, bool)>,
 }
 
 enum State {
@@ -228,6 +239,14 @@ enum State {
         region: usize,
         start: Point,
         cur: Point,
+    },
+    /// Satin column being digitized: points alternate between its two edges.
+    Column {
+        pts: Vec<Point>,
+        curves: Vec<bool>,
+        cursor: Point,
+        /// The button is down on the newest point: dragging makes it a curve point.
+        dragging: bool,
     },
     Pen {
         nodes: Vec<PenNode>,
@@ -278,6 +297,45 @@ fn flatten_pen(nodes: &[PenNode], closed: bool) -> Vec<Point> {
         out.pop(); // the last point repeats the first
     }
     out
+}
+
+/// Guides for a satin column being digitized: both edges so far, a line across each pair (the
+/// stitch angle there), and a rubber band to the cursor.
+fn column_overlay(pts: &[Point], curves: &[bool], cursor: Point) -> Overlay {
+    let mut lines = Vec::new();
+    let mut with_cursor = pts.to_vec();
+    if pts.last().is_none_or(|l| l.dist(cursor) > 1e-9) {
+        with_cursor.push(cursor);
+    }
+    let (a, b) = embcraft_stitch::column_rails(&with_cursor, curves);
+    if a.len() >= 2 {
+        lines.push(a);
+        lines.push(b);
+    }
+    for pair in with_cursor.chunks(2) {
+        if pair.len() == 2 {
+            lines.push(pair.to_vec());
+        }
+    }
+    // the point waiting for its partner, or the next point on the first edge
+    if with_cursor.len() >= 2 && with_cursor.len() % 2 == 1 {
+        lines.push(
+            with_cursor[with_cursor.len() - 3..with_cursor.len()]
+                .iter()
+                .step_by(2)
+                .copied()
+                .collect(),
+        );
+    }
+    Overlay {
+        lines,
+        nodes: pts
+            .iter()
+            .enumerate()
+            .map(|(i, &p)| (p, curves.get(i).copied().unwrap_or(false)))
+            .collect(),
+        ..Overlay::default()
+    }
 }
 
 pub struct ToolController {
@@ -342,6 +400,12 @@ impl ToolController {
                     ..Overlay::default()
                 }
             }
+            State::Column {
+                pts,
+                curves,
+                cursor,
+                ..
+            } => column_overlay(pts, curves, *cursor),
             State::Poly { pts, cursor } => {
                 let mut p = pts.clone();
                 p.push(*cursor);
@@ -406,6 +470,11 @@ impl ToolController {
                     _ => p.pos,
                 };
             }
+            State::Column {
+                cursor,
+                dragging: false,
+                ..
+            } => *cursor = p.pos,
             State::Pen {
                 nodes,
                 cursor,
@@ -442,6 +511,11 @@ impl ToolController {
                 nodes.pop();
                 nodes.is_empty()
             }
+            State::Column { pts, curves, .. } => {
+                pts.pop();
+                curves.pop();
+                pts.is_empty()
+            }
             _ => return false,
         };
         if empty {
@@ -470,6 +544,18 @@ impl ToolController {
             (State::Pen { .. }, _) => {
                 Some("Click for a corner, or click and drag to pull out a smooth curve.")
             }
+            (State::Column { pts, .. }, _) if pts.len() >= 4 => Some(
+                "Click the next pair of points, left edge then right edge. Double-click or Enter finishes; Backspace takes back a point, Esc cancels.",
+            ),
+            (State::Column { pts, .. }, _) if pts.len() % 2 == 1 => {
+                Some("Now click the other edge of the column, across from that point.")
+            }
+            (State::Column { .. }, _) => {
+                Some("Click the next point on the first edge. Drag a little for a curve point.")
+            }
+            (State::Idle, Tool::Column) => Some(
+                "Click the first point on one edge of the column, then the point across from it on the other edge.",
+            ),
             (State::Idle, Tool::Curve) => {
                 Some("Click for a corner, or click and drag to pull out a smooth curve.")
             }
@@ -498,6 +584,7 @@ impl ToolController {
             }
             Tool::Freehand => self.state = State::Free { pts: vec![p.pos] },
             Tool::Curve => self.press_pen(ed, p),
+            Tool::Column => self.press_column(p),
             Tool::Text => self.text_request = Some(p.pos),
             Tool::Start => press_start(ed, p),
             Tool::Direction => self.press_direction(ed, p),
@@ -507,6 +594,17 @@ impl ToolController {
     pub fn drag(&mut self, ed: &mut Editor, p: Pointer) {
         match &mut self.state {
             State::DirDrag { cur, .. } => *cur = p.pos,
+            State::Column {
+                pts,
+                curves,
+                dragging: true,
+                ..
+            } => {
+                // a tiny drag is a click: keep the corner
+                if let (Some(l), Some(c)) = (pts.last(), curves.last_mut()) {
+                    *c |= l.dist(p.pos) > p.tol(4.0);
+                }
+            }
             State::Pen {
                 nodes,
                 cursor,
@@ -698,6 +796,19 @@ impl ToolController {
                     dragging: false,
                 }
             }
+            State::Column {
+                pts,
+                curves,
+                cursor,
+                ..
+            } => {
+                self.state = State::Column {
+                    pts,
+                    curves,
+                    cursor,
+                    dragging: false,
+                }
+            }
             other => self.state = other,
         }
     }
@@ -706,6 +817,7 @@ impl ToolController {
         match self.tool {
             Tool::Polyline | Tool::Hole => self.finish_poly(ed, false),
             Tool::Curve => self.finish_pen(ed, false),
+            Tool::Column => self.finish_column(ed),
             Tool::Node => self.double_click_node(ed, p),
             // a double-click picks one object out of its group or lettering
             Tool::Select => {
@@ -730,6 +842,9 @@ impl ToolController {
         }
         if self.tool == Tool::Curve {
             self.finish_pen(ed, false);
+        }
+        if self.tool == Tool::Column {
+            self.finish_column(ed);
         }
     }
 
@@ -820,6 +935,71 @@ impl ToolController {
                 }
             }
         }
+    }
+
+    fn press_column(&mut self, p: Pointer) {
+        match &mut self.state {
+            State::Column {
+                pts,
+                curves,
+                cursor,
+                dragging,
+            } => {
+                // the second click of a double-click lands on the newest point: no new point
+                if pts
+                    .last()
+                    .is_none_or(|l| l.dist(p.pos) > p.tol(SNAP_PX) * 0.5)
+                {
+                    pts.push(p.pos);
+                    curves.push(false);
+                }
+                *cursor = p.pos;
+                *dragging = true;
+            }
+            _ => {
+                self.state = State::Column {
+                    pts: vec![p.pos],
+                    curves: vec![false],
+                    cursor: p.pos,
+                    dragging: true,
+                }
+            }
+        }
+    }
+
+    fn finish_column(&mut self, ed: &mut Editor) {
+        let State::Column {
+            mut pts,
+            mut curves,
+            ..
+        } = std::mem::replace(&mut self.state, State::Idle)
+        else {
+            return;
+        };
+        // a point left without its partner on the other edge is dropped
+        if pts.len() % 2 == 1 {
+            pts.pop();
+            curves.pop();
+        }
+        if pts.len() < 4 {
+            return;
+        }
+        let params = match &self.defaults.style {
+            StitchStyle::Satin { params, .. } | StitchStyle::Column { params, .. } => {
+                params.clone()
+            }
+            _ => Default::default(),
+        };
+        if !curves.contains(&true) {
+            curves.clear();
+        }
+        ed.add_object(
+            "Satin column",
+            pts,
+            false,
+            StitchStyle::Column { params, curves },
+            self.defaults.thread,
+        );
     }
 
     fn finish_pen(&mut self, ed: &mut Editor, closed_by_click: bool) {
@@ -1006,6 +1186,9 @@ impl ToolController {
     }
 
     fn double_click_node(&mut self, ed: &mut Editor, p: Pointer) {
+        if column_double_click(self.find_node(ed, p), ed, p) {
+            return;
+        }
         if let Some((id, hole, idx)) = self.find_node(ed, p) {
             let Some(o) = ed.doc().object(id) else { return };
             let len = match hole {
@@ -1047,6 +1230,81 @@ impl ToolController {
             }
         }
     }
+}
+
+/// Nodes tool on a satin column, whose points are pairs across it: double-clicking a point
+/// deletes its pair (two pairs must stay), double-clicking inside the column adds a pair there.
+/// Returns false when no column is concerned.
+fn column_double_click(
+    node: Option<(ObjectId, Option<usize>, usize)>,
+    ed: &mut Editor,
+    p: Pointer,
+) -> bool {
+    if let Some((id, _, idx)) = node {
+        let Some(o) = ed.doc().object(id) else {
+            return false;
+        };
+        if !matches!(o.style, StitchStyle::Column { .. }) {
+            return false;
+        }
+        if o.points.len() >= 6 {
+            ed.checkpoint();
+            if let Some(o) = ed.doc_mut().object_mut(id) {
+                let k = idx / 2 * 2;
+                o.points.drain(k..(k + 2).min(o.points.len()));
+                if let StitchStyle::Column { curves, .. } = &mut o.style {
+                    if curves.len() > k {
+                        curves.drain(k..(k + 2).min(curves.len()));
+                    }
+                }
+            }
+        }
+        return true;
+    }
+    // inside a selected column: a new pair across it, between the pairs on either side
+    let hit = ed.selected_objects().find_map(|o| {
+        let StitchStyle::Column { curves, .. } = &o.style else {
+            return None;
+        };
+        if !object_hit(o, p.pos, 0.0) {
+            return None;
+        }
+        // the stretch between pair j and j + 1 that the click is in
+        (0..o.points.len() / 2 - 1).find_map(|j| {
+            let piece = &o.points[2 * j..2 * j + 4];
+            let flags: Vec<bool> = (2 * j..2 * j + 4)
+                .map(|i| curves.get(i).copied().unwrap_or(false))
+                .collect();
+            let (a, b) = embcraft_stitch::column_rails(piece, &flags);
+            let ring: Vec<Point> = a.iter().chain(b.iter().rev()).copied().collect();
+            if !point_in_ring(&ring, p.pos) {
+                return None;
+            }
+            // the matched pair whose line passes nearest the click
+            let k = (0..a.len()).min_by(|&x, &y| {
+                dist_to_path(&[a[x], b[x]], false, p.pos).total_cmp(&dist_to_path(
+                    &[a[y], b[y]],
+                    false,
+                    p.pos,
+                ))
+            })?;
+            Some((o.id, 2 * j + 2, a[k], b[k]))
+        })
+    });
+    let Some((id, at, pa, pb)) = hit else {
+        return false;
+    };
+    ed.checkpoint();
+    if let Some(o) = ed.doc_mut().object_mut(id) {
+        o.points.splice(at..at, [pa, pb]);
+        if let StitchStyle::Column { curves, .. } = &mut o.style {
+            if !curves.is_empty() {
+                let at = at.min(curves.len());
+                curves.splice(at..at, [true, true]);
+            }
+        }
+    }
+    true
 }
 
 fn rect_points(a: Point, b: Point, square: bool) -> Vec<Point> {
@@ -1184,6 +1442,88 @@ mod tests {
     fn click(t: &mut ToolController, e: &mut Editor, x: f64, y: f64) {
         t.press(e, ptr(x, y));
         t.release(e, ptr(x, y));
+    }
+
+    #[test]
+    fn column_tool_digitizes_pairs() {
+        let (mut t, mut e) = (ToolController::default(), Editor::default());
+        t.set_tool(Tool::Column);
+        assert!(t.hint(&e).is_some_and(|h| h.contains("first point")));
+        // pair 1, then pair 2 with a dragged (curve) point on the first edge
+        click(&mut t, &mut e, 0.0, 0.0);
+        assert!(t.hint(&e).is_some_and(|h| h.contains("other edge")));
+        click(&mut t, &mut e, 0.0, 5.0);
+        t.press(&mut e, ptr(15.0, -2.0));
+        t.drag(&mut e, ptr(17.0, -2.0));
+        t.release(&mut e, ptr(17.0, -2.0));
+        click(&mut t, &mut e, 15.0, 3.0);
+        // a stray third pair is taken back with Backspace
+        click(&mut t, &mut e, 30.0, 0.0);
+        click(&mut t, &mut e, 30.0, 5.0);
+        assert!(t.undo_point() && t.undo_point());
+        click(&mut t, &mut e, 30.0, 0.0);
+        click(&mut t, &mut e, 30.0, 5.0);
+        let ov = t.overlay();
+        assert_eq!(ov.nodes.len(), 6);
+        assert!(
+            ov.nodes[2].1 && !ov.nodes[0].1,
+            "the dragged point is a curve point"
+        );
+        assert!(ov.lines.len() >= 5, "two edges and three pairs");
+        // a lone point with no partner is dropped when finishing
+        click(&mut t, &mut e, 45.0, 0.0);
+        t.enter(&mut e);
+        assert!(!t.is_drawing());
+        let o = &e.doc().objects[0];
+        assert_eq!(o.points.len(), 6);
+        let StitchStyle::Column { curves, .. } = &o.style else {
+            panic!("{:?}", o.style)
+        };
+        assert_eq!(curves, &[false, false, true, false, false, false]);
+        assert!(
+            object_hit(o, Point::new(20.0, 2.0), 0.1),
+            "inside the column"
+        );
+        assert!(!object_hit(o, Point::new(20.0, 10.0), 0.1));
+        let pat = e
+            .doc()
+            .to_design()
+            .to_pattern(&embcraft_design::BuildOptions::default())
+            .expect("stitches");
+        assert!(pat.stitch_count() > 100, "{}", pat.stitch_count());
+
+        // Nodes tool: double-click inside adds a pair, double-click a point deletes its pair
+        let id = o.id;
+        t.set_tool(Tool::Node);
+        e.select_only(id);
+        t.double_click(&mut e, ptr(22.0, 2.0));
+        let o = e.doc().object(id).unwrap();
+        assert_eq!(o.points.len(), 8);
+        assert!(
+            (o.points[4].x - 22.0).abs() < 1.0,
+            "new pair near the click: {:?}",
+            &o.points[4..6]
+        );
+        let StitchStyle::Column { curves, .. } = &o.style else {
+            unreachable!()
+        };
+        assert_eq!(curves.len(), 8);
+        t.double_click(&mut e, ptr(0.0, 5.0));
+        let o = e.doc().object(id).unwrap();
+        assert_eq!(o.points.len(), 6);
+        assert_eq!(
+            o.points[0],
+            Point::new(15.0, -2.0),
+            "the first pair is gone"
+        );
+
+        // one pair is not a column
+        let (mut t, mut e) = (ToolController::default(), Editor::default());
+        t.set_tool(Tool::Column);
+        click(&mut t, &mut e, 0.0, 0.0);
+        click(&mut t, &mut e, 0.0, 5.0);
+        t.enter(&mut e);
+        assert!(e.doc().objects.is_empty());
     }
 
     #[test]
