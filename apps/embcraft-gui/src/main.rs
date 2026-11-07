@@ -122,6 +122,9 @@ struct Script {
     requested: bool,
     /// Rest the pointer here, and wait for tooltips before the screenshot.
     hover: Option<egui::Pos2>,
+    /// Click here, then type `typing` one key per frame (keyboard tests).
+    click: Option<egui::Pos2>,
+    typing: Vec<char>,
     started: Option<std::time::Instant>,
     /// Also save a mockup picture here (with `--product`, the product to show it on).
     mockup: Option<PathBuf>,
@@ -191,6 +194,9 @@ struct Args {
     dock: bool,
     /// Rest the pointer at "x,y" before the screenshot (tooltip tests).
     hover: Option<egui::Pos2>,
+    /// Click at "x,y", then type this text, before the screenshot (keyboard tests).
+    click: Option<egui::Pos2>,
+    typing: Option<String>,
     /// Save a mockup picture with the screenshot; show the design on this product first (its
     /// position in the picker), and open the picker (screenshot tests).
     mockup: Option<PathBuf>,
@@ -227,6 +233,8 @@ fn parse_args() -> Args {
         font_maker: false,
         lettering: None,
         hover: None,
+        click: None,
+        typing: None,
         mockup: None,
         product: None,
         picker: false,
@@ -249,12 +257,18 @@ fn parse_args() -> Args {
             "--mockup" => a.mockup = it.next().map(PathBuf::from),
             "--product" => a.product = it.next().and_then(|v| v.parse().ok()),
             "--picker" => a.picker = true,
-            "--hover" => {
-                a.hover = it.next().and_then(|v| {
+            "--hover" | "--click" => {
+                let p = it.next().and_then(|v| {
                     let (x, y) = v.split_once(',')?;
                     Some(egui::pos2(x.parse().ok()?, y.parse().ok()?))
-                })
+                });
+                if s == "--hover" {
+                    a.hover = p;
+                } else {
+                    a.click = p;
+                }
             }
+            "--type" => a.typing = it.next(),
             "--lettering" => {
                 let n = it.next().and_then(|v| v.parse().ok()).unwrap_or(0);
                 a.lettering = it.next().map(|w| (n, w));
@@ -400,6 +414,8 @@ impl App {
             pending: None,
             script: Script {
                 hover: args.hover,
+                click: args.click,
+                typing: args.typing.unwrap_or_default().chars().collect(),
                 started: None,
                 screenshot: args.screenshot,
                 mockup: args.mockup,
@@ -811,7 +827,11 @@ impl App {
         if self.script.hover.is_some() && !waited {
             ctx.request_repaint_after_secs(2.2);
         }
-        if self.script.frames > 8 && waited && !self.previews.busy() && !self.script.requested {
+        if self.script.frames > 10 + self.script.typing.len() as u32
+            && waited
+            && !self.previews.busy()
+            && !self.script.requested
+        {
             self.script.requested = true;
             ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
         }
@@ -847,6 +867,34 @@ impl eframe::App for App {
             if self.script.frames < 3 {
                 raw_input.events.push(egui::Event::PointerMoved(p));
             }
+        }
+        // a click, then keys as a keyboard sends them: a key press and the text it types
+        let f = self.script.frames as usize;
+        if let Some(pos) = self.script.click {
+            let button = |pressed| egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            };
+            match f {
+                2 => raw_input.events.push(egui::Event::PointerMoved(pos)),
+                3 => raw_input.events.push(button(true)),
+                4 => raw_input.events.push(button(false)),
+                _ => {}
+            }
+        }
+        if let Some(&c) = f.checked_sub(6).and_then(|i| self.script.typing.get(i)) {
+            if let Some(key) = egui::Key::from_name(&c.to_ascii_uppercase().to_string()) {
+                raw_input.events.push(egui::Event::Key {
+                    key,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                });
+            }
+            raw_input.events.push(egui::Event::Text(c.to_string()));
         }
     }
 

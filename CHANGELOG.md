@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Text tool: after clicking where the lettering goes, typing goes straight into the text box and
+  replaces the sample "Text" (letters no longer switch tools). The box keeps the keyboard until
+  you click elsewhere.
+
 ## 0.1.0 (2026-10-28)
 
 First public release.
