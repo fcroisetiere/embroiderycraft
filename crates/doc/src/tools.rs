@@ -71,7 +71,7 @@ impl Tool {
                 "Click to place straight-line corners. Finish on the first point, with a double-click or with Enter."
             }
             Tool::Curve => {
-                "Bézier pen. Click for a sharp corner, click and drag for a smooth curve. Finish on the first point, with a double-click or with Enter."
+                "Bézier pen. Click for a sharp corner, click and drag for a smooth curve. Click a curved point again to make the next line leave it straight. Finish on the first point, with a double-click or with Enter."
             }
             Tool::Rectangle => "Drag to draw a rectangle. Hold Shift for a square.",
             Tool::Ellipse => "Drag to draw an ellipse. Hold Shift for a circle.",
@@ -237,12 +237,26 @@ enum State {
     },
 }
 
-/// A point of a Bézier path. `handle` is the outgoing control point; the incoming one mirrors it.
-/// No handle means a sharp corner.
+/// A point of a Bézier path. `handle` is the outgoing control point and `handle_in` the incoming
+/// one; dragging out a new point sets both, mirrored. No handle on a side means that side is sharp.
 #[derive(Clone, Copy, Debug)]
 struct PenNode {
     p: Point,
     handle: Option<Point>,
+    handle_in: Option<Point>,
+    /// Clicked again after it was placed: dragging now moves the outgoing handle alone.
+    split: bool,
+}
+
+impl PenNode {
+    fn corner(p: Point) -> Self {
+        Self {
+            p,
+            handle: None,
+            handle_in: None,
+            split: false,
+        }
+    }
 }
 
 /// Flatten Bézier nodes into a polyline (about one point per 0.4 mm of curve).
@@ -256,8 +270,8 @@ fn flatten_pen(nodes: &[PenNode], closed: bool) -> Vec<Point> {
     for i in 0..segs {
         let (a, b) = (nodes[i], nodes[(i + 1) % n]);
         let c1 = a.handle.unwrap_or(a.p);
-        let c2 = b.handle.map(|h| b.p * 2.0 - h).unwrap_or(b.p);
-        if a.handle.is_none() && b.handle.is_none() {
+        let c2 = b.handle_in.unwrap_or(b.p);
+        if a.handle.is_none() && b.handle_in.is_none() {
             out.push(b.p);
             continue;
         }
@@ -326,10 +340,7 @@ impl ToolController {
                 }
                 let mut handles = Vec::new();
                 for n in nodes {
-                    if let Some(h) = n.handle {
-                        handles.push((n.p, h));
-                        handles.push((n.p, n.p * 2.0 - h));
-                    }
+                    handles.extend(n.handle.into_iter().chain(n.handle_in).map(|h| (n.p, h)));
                 }
                 let close_target = nodes
                     .first()
@@ -465,7 +476,7 @@ impl ToolController {
             }
             (State::Idle, Tool::Hole) => Some("Click points around the area to leave empty."),
             (State::Pen { nodes, .. }, _) if nodes.len() >= 2 => Some(
-                "Click for a corner, drag for a curve. Click the first point, double-click or press Enter to finish.",
+                "Click for a corner, drag for a curve. Click the last point again to go on straight. Click the first point, double-click or press Enter to finish.",
             ),
             (State::Pen { .. }, _) => {
                 Some("Click for a corner, or click and drag to pull out a smooth curve.")
@@ -515,6 +526,9 @@ impl ToolController {
                 if let Some(n) = nodes.last_mut() {
                     // a tiny drag is a click: keep the corner sharp
                     n.handle = (n.p.dist(p.pos) > p.tol(4.0)).then_some(p.pos);
+                    if !n.split {
+                        n.handle_in = n.handle.map(|h| n.p * 2.0 - h);
+                    }
                     *cursor = n.p;
                 }
             }
@@ -796,25 +810,23 @@ impl ToolController {
                     self.finish_pen(ed, true);
                     return;
                 }
-                // the second click of a double-click lands on the newest node: no new node
-                if nodes
-                    .last()
-                    .is_none_or(|l| l.p.dist(p.pos) > p.tol(SNAP_PX) * 0.5)
-                {
-                    nodes.push(PenNode {
-                        p: p.pos,
-                        handle: None,
-                    });
+                // A click on the newest node adds none: it cuts that node's outgoing handle, so
+                // the next line leaves it straight (Illustrator does the same), and a drag from
+                // there pulls out a new outgoing handle without moving the incoming one. This is
+                // also where the second click of a double-click lands.
+                match nodes.last_mut() {
+                    Some(l) if l.p.dist(p.pos) <= p.tol(SNAP_PX) * 0.5 => {
+                        l.handle = None;
+                        l.split = true;
+                    }
+                    _ => nodes.push(PenNode::corner(p.pos)),
                 }
                 *cursor = p.pos;
                 *dragging = true;
             }
             _ => {
                 self.state = State::Pen {
-                    nodes: vec![PenNode {
-                        p: p.pos,
-                        handle: None,
-                    }],
+                    nodes: vec![PenNode::corner(p.pos)],
                     cursor: p.pos,
                     dragging: true,
                 }
@@ -1253,6 +1265,67 @@ mod tests {
             o.points
                 .iter()
                 .any(|q| q.dist(Point::new(20.0, 0.0)) < 1e-9)
+        );
+
+        // issue #3: clicking the smooth point again cuts its outgoing handle, so the next line
+        // leaves it straight, like Illustrator
+        let (mut t, mut e) = (ToolController::default(), Editor::default());
+        t.defaults.style = StitchStyle::run();
+        t.set_tool(Tool::Curve);
+        click(&mut t, &mut e, 0.0, 0.0);
+        t.press(&mut e, ptr(20.0, 0.0));
+        t.drag(&mut e, ptr(25.0, -8.0));
+        t.release(&mut e, ptr(25.0, -8.0));
+        click(&mut t, &mut e, 20.0, 0.0);
+        assert_eq!(
+            t.overlay().handles.len(),
+            1,
+            "only the incoming handle is left"
+        );
+        click(&mut t, &mut e, 40.0, 0.0);
+        t.enter(&mut e);
+        let o = &e.doc().objects[0];
+        assert!(
+            o.points.iter().filter(|q| q.x < 20.0).any(|q| q.y > 1.0),
+            "still curved in"
+        );
+        assert!(
+            o.points
+                .iter()
+                .filter(|q| q.x > 20.0)
+                .all(|q| q.y.abs() < 1e-9),
+            "straight out: {:?}",
+            o.points
+        );
+
+        // dragging from the smooth point again pulls out a new outgoing handle on its own
+        let (mut t, mut e) = (ToolController::default(), Editor::default());
+        t.defaults.style = StitchStyle::run();
+        t.set_tool(Tool::Curve);
+        click(&mut t, &mut e, 0.0, 0.0);
+        t.press(&mut e, ptr(20.0, 0.0));
+        t.drag(&mut e, ptr(25.0, -8.0));
+        t.release(&mut e, ptr(25.0, -8.0));
+        t.press(&mut e, ptr(20.0, 0.0));
+        t.drag(&mut e, ptr(25.0, 8.0));
+        t.release(&mut e, ptr(25.0, 8.0));
+        click(&mut t, &mut e, 40.0, 0.0);
+        t.enter(&mut e);
+        let o = &e.doc().objects[0];
+        assert_eq!(
+            o.points
+                .iter()
+                .filter(|q| q.dist(Point::new(20.0, 0.0)) < 1e-9)
+                .count(),
+            1
+        );
+        assert!(
+            o.points.iter().filter(|q| q.x < 20.0).any(|q| q.y > 1.0),
+            "incoming kept"
+        );
+        assert!(
+            o.points.iter().filter(|q| q.x > 20.0).any(|q| q.y > 1.0),
+            "new outgoing"
         );
 
         // closing on the first point; Backspace takes a node back

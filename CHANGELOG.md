@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Curve tool: click a curved point again to make the next line leave it straight (a sharp
+  corner after a curve, as in Illustrator); drag from it to pull out a new outgoing handle. (#3)
+
 ## 0.1.0 (2026-10-28)
 
 First public release.
