@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "embcraft"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "embcraft-core",
  "embcraft-design",
@@ -622,14 +622,14 @@ dependencies = [
 
 [[package]]
 name = "embcraft-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "embcraft-design"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "embcraft-core",
  "embcraft-stitch",
@@ -640,7 +640,7 @@ dependencies = [
 
 [[package]]
 name = "embcraft-doc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "embcraft-core",
  "embcraft-design",
@@ -654,7 +654,7 @@ dependencies = [
 
 [[package]]
 name = "embcraft-dst"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "embcraft-core",
  "thiserror 2.0.21",
@@ -662,7 +662,7 @@ dependencies = [
 
 [[package]]
 name = "embcraft-gui"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "eframe",
  "egui",
@@ -679,7 +679,7 @@ dependencies = [
 
 [[package]]
 name = "embcraft-stitch"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "embcraft-core",
  "serde",
@@ -687,7 +687,7 @@ dependencies = [
 
 [[package]]
 name = "embcraft-text"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "embcraft-core",
  "embcraft-stitch",
