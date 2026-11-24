@@ -54,6 +54,7 @@ pub enum Icon {
     Node,
     Polyline,
     Curve,
+    Column,
     Rectangle,
     Ellipse,
     Freehand,
@@ -580,6 +581,29 @@ pub fn paint(painter: &egui::Painter, rect: Rect, icon: Icon, color: Color32) {
             }
             pen.dot(2.5, 12.0, 1.3);
             pen.dot(21.5, 12.0, 1.3);
+        }
+        Column => {
+            // an arched column: both edges, stitches turning across it, and clicked pairs
+            let (cx, cy, r0, r1) = (12.0, 21.0, 7.0, 12.0);
+            let at = |r: f32, k: f32| {
+                let a = std::f32::consts::PI * (1.0 + k);
+                (cx + r * a.cos(), cy + r * a.sin())
+            };
+            let edge = |r: f32| (0..=16).map(|i| at(r, i as f32 / 16.0)).collect::<Vec<_>>();
+            pen.line(&edge(r0));
+            pen.line(&edge(r1));
+            let thin = Stroke::new(pen.s.width * 0.6, color);
+            for i in 1..8 {
+                let (a, b) = (at(r0, i as f32 / 8.0), at(r1, i as f32 / 8.0));
+                pen.p
+                    .line_segment([pen.at(a.0, a.1), pen.at(b.0, b.1)], thin);
+            }
+            for k in [0.0, 0.5, 1.0] {
+                for r in [r0, r1] {
+                    let (x, y) = at(r, k);
+                    pen.dot(x, y, 1.4);
+                }
+            }
         }
         Satin => {
             let mut v = Vec::new();

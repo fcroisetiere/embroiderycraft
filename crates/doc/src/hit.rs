@@ -52,6 +52,12 @@ pub fn object_hit(o: &EditObject, p: Point, tol: f64) -> bool {
         StitchStyle::Satin { width, .. } => tol.max(width * 0.5),
         _ => tol,
     };
+    // a satin column: on or inside the outline its two edges make
+    if let Some((a, mut b)) = o.column_rails() {
+        b.reverse();
+        let ring: Vec<Point> = a.into_iter().chain(b).collect();
+        return point_in_ring(&ring, p) || dist_to_path(&ring, true, p) <= tol;
+    }
     if dist_to_path(&o.points, o.closed, p) <= reach {
         return true;
     }

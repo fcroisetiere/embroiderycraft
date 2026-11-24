@@ -6,7 +6,7 @@
 use embcraft_core::{Pattern, Point, StitchKind, Thread};
 use embcraft_stitch::{
     AppliqueParams, AutoSatinParams, FillParams, RunParams, SatinParams, SatinRegion, applique,
-    auto_satin, fill, rails_from_centerline, run, satin, sew_satin_regions,
+    auto_satin, column, fill, rails_from_centerline, run, satin, sew_satin_regions,
 };
 use serde::{Deserialize, Serialize};
 
@@ -46,6 +46,14 @@ pub enum ObjectKind {
     },
     /// A satin column between two explicit rails.
     SatinRails {
+        a: Vec<Point>,
+        b: Vec<Point>,
+        #[serde(default)]
+        params: SatinParams,
+    },
+    /// A satin column between rails with matched points (`a[k]` across from `b[k]`), so the
+    /// stitches turn from pair to pair (the Column tool; see `embcraft_stitch::column_rails`).
+    Column {
         a: Vec<Point>,
         b: Vec<Point>,
         #[serde(default)]
@@ -241,7 +249,7 @@ impl Design {
                 ObjectKind::Satin { center, width, .. } => {
                     pts.extend(center.iter().map(|&p| (p, width / 2.0)))
                 }
-                ObjectKind::SatinRails { a, b, .. } => {
+                ObjectKind::SatinRails { a, b, .. } | ObjectKind::Column { a, b, .. } => {
                     pts.extend(a.iter().chain(b).map(|&p| (p, 0.0)))
                 }
                 ObjectKind::Fill { rings, .. } | ObjectKind::AutoSatin { rings, .. } => {
@@ -297,7 +305,9 @@ impl Design {
                 ObjectKind::Satin { center, width, .. } => {
                     width.is_finite() && center.iter().all(|p| p.is_finite())
                 }
-                ObjectKind::SatinRails { a, b, .. } => a.iter().chain(b).all(|p| p.is_finite()),
+                ObjectKind::SatinRails { a, b, .. } | ObjectKind::Column { a, b, .. } => {
+                    a.iter().chain(b).all(|p| p.is_finite())
+                }
                 ObjectKind::Fill { rings, .. }
                 | ObjectKind::AutoSatin { rings, .. }
                 | ObjectKind::Applique { rings, .. } => {
@@ -369,6 +379,7 @@ impl Design {
                 satin(&a, &b, params, from)
             }
             ObjectKind::SatinRails { a, b, params } => satin(a, b, params, from),
+            ObjectKind::Column { a, b, params } => column(a, b, params, start.or(from)),
             ObjectKind::Fill { rings, params } => fill(rings, params, from),
             ObjectKind::AutoSatin { rings, params } => auto_satin(rings, params, from),
             ObjectKind::SatinRegions { regions, params } => {

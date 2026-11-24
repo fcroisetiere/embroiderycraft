@@ -301,7 +301,33 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 ));
             }
         }
-        draw(&o.points, o.closed);
+        if let Some((a, b)) = o.column_rails() {
+            // a satin column: its two edges, and a thin line across each clicked pair
+            if !app.show_stitches {
+                // filled in thread colour, one small four-sided piece between neighbouring pairs
+                let fill = Color32::from_rgba_unmultiplied(base.r(), base.g(), base.b(), 90);
+                for k in 1..a.len().min(b.len()) {
+                    let quad = [a[k - 1], a[k], b[k], b[k - 1]]
+                        .map(|p| app.view.to_screen(rect, p))
+                        .to_vec();
+                    painter.add(Shape::convex_polygon(quad, fill, Stroke::NONE));
+                }
+            }
+            draw(&a, false);
+            draw(&b, false);
+            let thin = Stroke::new(1.0, stroke.color.gamma_multiply(0.6));
+            for pair in o.points.chunks_exact(2) {
+                painter.line_segment(
+                    [
+                        app.view.to_screen(rect, pair[0]),
+                        app.view.to_screen(rect, pair[1]),
+                    ],
+                    thin,
+                );
+            }
+        } else {
+            draw(&o.points, o.closed);
+        }
         for h in &o.holes {
             draw(h, true);
         }
@@ -390,6 +416,23 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     }
     for p in &ov.preview {
         painter.circle_filled(app.view.to_screen(rect, *p), 2.5, theme::DRAFT);
+    }
+    // a satin column being digitized: edges and pairs, curve points round, corners square
+    for l in &ov.lines {
+        let v: Vec<Pos2> = l.iter().map(|&p| app.view.to_screen(rect, p)).collect();
+        painter.add(Shape::line(v, Stroke::new(1.3, theme::DRAFT)));
+    }
+    for &(p, curve) in &ov.nodes {
+        let c = app.view.to_screen(rect, p);
+        if curve {
+            painter.circle_filled(c, 3.2, theme::DRAFT);
+        } else {
+            painter.rect_filled(
+                Rect::from_center_size(c, Vec2::splat(5.5)),
+                0.0,
+                theme::DRAFT,
+            );
+        }
     }
     // Start points chosen for objects: a small flag planted at the point
     for o in app.ed.doc().objects.iter().filter(|o| o.visible) {
