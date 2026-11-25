@@ -1,0 +1,10 @@
+[Unit]
+Description=Write the Wi-Fi state to /boot/firmware/wifi-report.txt
+After=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /usr/local/bin/wifi-report.sh
+
+[Install]
+WantedBy=multi-user.target

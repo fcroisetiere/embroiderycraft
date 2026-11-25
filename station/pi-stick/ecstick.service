@@ -1,0 +1,13 @@
+[Unit]
+Description=EmbroideryCraft design stick (USB mass storage for the machine)
+After=local-fs.target sys-kernel-config.mount systemd-modules-load.service
+Wants=sys-kernel-config.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/ecstick start
+ExecStop=/usr/local/bin/ecstick stop
+
+[Install]
+WantedBy=multi-user.target

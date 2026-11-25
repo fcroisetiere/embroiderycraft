@@ -1,0 +1,395 @@
+# Isacord 40 (AMANN), polyester, 5000 m cones (article 2914): 391 colours.
+# Colours sampled from AMANN's digital colour card (Isacord, December 2024). They are on-screen guidance
+# only: compare with a real thread card before promising a colour. Names from the supplier's colour list (RB Digital, rbdigital.ca), spelling slips corrected.
+# code,rgb,name
+0003,#ebecee,Ghost White
+0010,#eaf0ff,Silky White
+0015,#eaefff,White
+0017,#e4e8ff,Paper White
+0020,#27282a,Black
+0021,#28292c,
+0101,#ebebe3,Egg Shell
+0105,#a9abb2,Ash Mist
+0108,#787b7f,Cobblestone
+0111,#616366,Whale
+0112,#6a6b74,Leadville
+0124,#b1b5ae,Fieldstone
+0128,#6c6a63,Navajo
+0131,#8c9199,Smoke
+0132,#434751,Dark Pewter
+0134,#454647,Smoky
+0138,#585b63,Heavy Storm
+0142,#959ea1,Sterling
+0145,#acb8c0,Skylight
+0150,#b5b2b3,Mystik
+0151,#aeaaa5,Cloud
+0152,#797878,Dolphin
+0182,#c1c1c5,Saturn Grey
+0184,#c9c7c9,Pearl
+0220,#ece547,Sunbeam
+0221,#d3ba4a,Light Brass
+0230,#f6da60,Easter Dress
+0232,#b2a24f,Seaweed
+0250,#e9ecae,Lemon Frost
+0270,#f0eac3,Buttercream
+0310,#f8d441,Yellow
+0311,#ffc000,Canary
+0345,#6a5726,Moss
+0352,#aba561,Marsh
+0442,#998439,Tarnished Gold
+0453,#868563,Army Drab
+0454,#71714d,Olive Drab
+0463,#787b67,Cypress
+0465,#4d4631,Umber
+0501,#ffff42,Sun
+0506,#fdbc37,Yellow Bird
+0520,#f2da8b,Daffodil
+0532,#c5b17e,Champagne
+0542,#a7811f,Ochre
+0546,#ac8e33,Ginger
+0552,#b09764,Flax
+0555,#989382,Light Sage
+0576,#413b38,Very Dark Brown
+0600,#f9d100,Citrus
+0605,#ffc700,Daisy
+0608,#ffbc19,Sunshine
+0630,#f9cc63,Buttercup
+0640,#f1c87f,Parchment
+0643,#b9a36f,Barewood
+0651,#cfaa7c,Cornsilk
+0660,#f3e3bd,Vanilla
+0670,#e5e5d7,Cream
+0672,#b2ad9b,Baguette
+0674,#757066,Armour
+0700,#fcab14,Bright Yellow
+0702,#f7a70b,Papaya
+0703,#fab314,Orange Peel
+0704,#db9c1f,Gold
+0713,#fac255,Lemon
+0721,#b98f42,Antique
+0722,#8c7d70,Khaki
+0731,#ca9e5e,Applesauce
+0741,#dab774,Wheat
+0747,#604c2e,Golden Brown
+0761,#c8b89b,Oat
+0763,#897a68,Dark Rattan
+0776,#6e6458,Sage
+0781,#e7d3b8,Candlewick
+0800,#f69900,Goldenrod
+0811,#e39d42,Candlelight
+0821,#c68835,Honey Gold
+0822,#b58845,Palomino
+0824,#c47e0e,Liberty Gold
+0832,#b48852,Sisal
+0842,#b88758,Toffee
+0851,#c8a274,Old Gold
+0853,#8a6c54,Pecan
+0861,#b9aa97,Tantone
+0862,#897d6f,Wild Rice
+0870,#dfd4bf,Muslin
+0873,#938b7e,Stone
+0874,#a3978d,Gravel
+0904,#e68417,Spanish Gold
+0922,#b66f2a,Ashley Gold
+0931,#af6228,Honey
+0932,#9e5a2d,Nutmeg
+0933,#6f4831,Redwood
+0934,#b09071,Fawn
+0940,#ad6714,Autumn Leaf
+0941,#9a6a38,Golden Grain
+0945,#5b473b,Pine Park
+0970,#f0e7ca,Linen
+1030,#ffa65a,Passion Fruit
+1032,#99653e,Bronze
+1055,#6d4f41,Bark
+1060,#f7c9a6,Shrimp Pink
+1061,#9b8170,Taupe
+1102,#ec660b,Pumpkin
+1106,#ff7c35,Orange
+1114,#d4663e,Clay
+1115,#a05531,Copper
+1120,#ffb92e,Sunset
+1123,#af8f73,Caramel Cream
+1133,#b37f5a,Peru
+1134,#804b2e,Light Cocoa
+1140,#dfbb97,Meringue
+1141,#c69d7d,Tan
+1154,#865a40,Penny
+1172,#c2ac92,Ivory
+1200,#f57f2f,Sunset Orange
+1220,#ee733c,Apricot
+1233,#885036,Pony
+1300,#f55d25,Tangerine
+1301,#de4a2a,Paprika
+1304,#e9481a,Red Pepper
+1305,#f23119,Fox Fire
+1306,#ff4632,Devil Red
+1310,#ef5d16,Hunter Orange
+1311,#a14931,Date
+1312,#a3412e,Burnt Orange
+1321,#cb5827,Dark Orange
+1322,#944f3c,Dirty Penny
+1332,#c3613a,Harvest
+1334,#9b402b,Spice
+1335,#af362a,Dark Rust
+1342,#80432e,Rust
+1344,#6f3e31,Coffee Bean
+1346,#53342f,Cinnamon
+1351,#fda58d,Starfish
+1352,#f79173,Salmon
+1355,#60392d,Fox
+1362,#f9b086,Shrimp
+1366,#3e2d2c,Mahogany
+1375,#4b4643,Dark Charcoal
+1430,#e3755e,Melon
+1514,#8e2e2c,Brick
+1521,#e3584e,Flamingo
+1526,#893936,Apple Butter
+1532,#fe9789,Coral
+1543,#864f4b,Rusty Rose
+1565,#644d48,Espresso
+1600,#de4d47,Spanish Tile
+1701,#e53532,Red Berry
+1703,#cb2024,Poppy
+1704,#c71f2a,Candy Apple
+1720,#e82739,Not Quite Red
+1725,#ad3a3b,Terra Cotta
+1753,#f65c6f,Strawberries N Cream
+1755,#d9aaa7,Hyacinth
+1760,#d0ac9b,Twine
+1761,#d2aca2,Tea Rose
+1776,#3c3338,Blackberry
+1800,#c2172d,Wildfire
+1805,#ca203c,Strawberry
+1840,#fc838b,Corsage
+1860,#f1bdba,Shell
+1874,#59554e,Pewter
+1876,#4b3832,Chocolate
+1900,#c51941,Geranium
+1902,#af0827,Poinsettia
+1903,#bf0e2f,Lipstick
+1904,#b70929,Cardinal
+1906,#ab0638,Tulip
+1911,#95172d,Foliage Rose
+1912,#831d32,Winterberry
+1913,#8e222c,Cherry
+1921,#af3d4c,Blossom
+1940,#ff6781,Chrysanthemum
+1950,#f13b66,Tropical Pink
+1972,#8c8c93,Silvery Grey
+2011,#8b2838,Fire Engine
+2022,#842c36,Rio Red
+2051,#bc8b8c,Teaberry
+2101,#9e0d2c,Country Red
+2113,#732133,Cranberry
+2115,#5b2530,Beet Red
+2123,#6d1e2d,Bordeaux
+2152,#d78195,Heather Pink
+2153,#be7384,Dusty Mauve
+2155,#faacb9,Pink Tulip
+2160,#f5b9bf,Iced Pink
+2170,#eec8c7,Chiffon
+2171,#f7d4d1,Blush
+2211,#8e2a4c,Pomegranate
+2220,#eb5e84,Tropicana
+2222,#762e41,Burgundy
+2224,#6b313d,Claret
+2241,#a45968,Mauve
+2250,#f2b7c3,Petal Pink
+2300,#c21557,Bright Ruby
+2320,#d63864,Raspberry
+2333,#64243a,Wine
+2336,#4b333d,Maroon
+2363,#fdc6da,Carnation
+2500,#842b55,Boysenberry
+2504,#914077,Plum
+2506,#8a2453,Cerise
+2508,#cd3685,Hot Pink
+2520,#e35585,Garden Rose
+2521,#b71951,Fuchsia
+2530,#f785aa,Rose
+2532,#e6669a,Pretty in Pink
+2550,#eb91b5,Soft Pink
+2560,#f59dbd,Azalea Pink
+2564,#64656a,Titanium
+2600,#7c416c,Dusty Grape
+2640,#ba7faf,Frosted Plum
+2650,#e2b6d6,Impatiens
+2655,#ddbddb,Aura
+2674,#6e7383,Steel
+2702,#53336a,Grape Jelly
+2704,#7f0869,Purple Passion
+2711,#692f57,Dark Currant
+2715,#5b2352,Pansy
+2723,#aa397b,Peony
+2732,#b55db1,Frosted Orchid
+2762,#b99aa6,Misty Rose
+2764,#9f7c93,Violet
+2776,#4a4649,Black Chrome
+2810,#764077,Orchid
+2830,#9a72ab,Wild Iris
+2864,#5f556c,Columbine
+2900,#4c2970,Deep Purple
+2905,#684589,Iris Blue
+2910,#7a5298,Grape
+2920,#6d598e,Purple
+2944,#3e2a39,Scrumptious Plum
+2953,#443a5d,Concord Fog
+2954,#362d44,Aubergine
+3030,#9f91bd,Amethyst
+3040,#ae99bc,Lavender
+3045,#b396ba,Cachet
+3102,#252b5d,Provence
+3110,#362c62,Dark Ink
+3114,#442f62,Purple Twist
+3130,#8c86b9,Dawn of Violet
+3210,#4b4b9b,Blueberry
+3211,#4d4f83,Twilight
+3241,#827f9e,Amethyst Frost
+3251,#847c95,Haze
+3265,#555660,Slate Gray
+3274,#6e737d,Battleship Gray
+3323,#222f54,Delft
+3331,#748bc4,Cadet Blue
+3332,#43569b,Forget Me Not
+3333,#1e2f6e,Fire Blue
+3335,#233c7e,Flag Blue
+3344,#2a2d3a,Midnight
+3350,#c1c8e1,Lavender Whisper
+3353,#2a3059,Light Midnight
+3355,#272a40,Dark Indigo
+3363,#2d334d,Midnight Blue
+3410,#5071a9,Rich Blue
+3444,#39475c,Concord
+3450,#a6acd5,Lavender
+3510,#0846a3,Electric Blue
+3522,#114c93,Blue
+3536,#432e4e,Heraldic
+3541,#413284,Venetian Blue
+3543,#20458b,Royal Blue
+3544,#143d81,Sapphire
+3554,#252b3e,Navy
+3572,#9aa3b2,Summer Grey
+3574,#2a2d37,Darkest Blue
+3600,#185191,Nordic Blue
+3611,#1b5399,Blue Ribbon
+3612,#24488f,Starlight Blue
+3622,#1c4b7e,Imperial Blue
+3630,#72a0da,Sweet Boy
+3631,#4a74ab,Tufts Blue
+3640,#7f9fd4,Lake Blue
+3641,#5c85b4,Wedgewood
+3644,#19385c,Royal Navy
+3645,#333d58,Prussian Blue
+3650,#b6c7dc,Ice Cap
+3652,#90b0d6,Baby Blue
+3654,#3f526e,Blue Shadow
+3666,#2e3841,Space
+3713,#1f73b9,Cornflower Blue
+3730,#a6c6e2,Something Blue
+3732,#244768,Slate Blue
+3743,#2f4663,Harbour
+3750,#92aaba,Winter Frost
+3761,#93b5d5,Winter Sky
+3770,#bbc2c4,Oyster
+3810,#3c729e,Laguna
+3815,#2c8cc4,Reef Blue
+3820,#5a97c6,Celestial
+3830,#5091b8,Surfs Up
+3840,#88b0d0,Oxford
+3842,#4e6e81,Copenhagen
+3852,#687d8d,Manatee
+3900,#0065ab,Cerulean
+3901,#0372ae,Tropical Blue
+3902,#086097,Chicory
+3910,#2da2cf,Crystal Blue
+3951,#88a6bc,Azure Blue
+3953,#4f6986,Ocean Blue
+3962,#82c3e6,River Mist
+3963,#bcd5e7,Hint of Blue
+3971,#acb1b5,Silver
+4010,#0082a4,Caribbean Blue
+4032,#377591,Teal
+4071,#bcc8d1,Glacier Green
+4073,#818489,Metal
+4074,#616a71,Dimgray
+4101,#0082aa,Wave Blue
+4103,#0087b3,California Blue
+4111,#169cb8,Turquoise
+4113,#1598bb,Alexis Blue
+4116,#00698b,Dark Teal
+4133,#11415b,Deep Ocean
+4152,#78a9b7,Serenity
+4174,#32393d,Charcoal
+4220,#15a5b4,Island Green
+4230,#57b9cf,Aqua
+4240,#88ccdc,Spearmint
+4250,#a4cac9,Snomoon
+4410,#007481,Aqua Velva
+4421,#08788b,Light Mallard
+4423,#008a97,Marine Aqua
+4430,#61bbca,Island Waters
+4515,#08454f,Spruce
+4531,#06788e,Caribbean
+4610,#0c9093,Deep Aqua
+4620,#2ca5a5,Jade
+4625,#076666,Seagreen
+4643,#275e65,Amazon
+4644,#2b5762,Mallard
+4740,#8addd9,Aquamarine
+4752,#7da3a2,Vintage Blue
+4952,#83c2c1,Mystic Blue
+5005,#055d5a,Rain Forest
+5010,#008f86,Scotty Green
+5050,#9fd0cc,Luster
+5100,#007363,Green
+5101,#058a80,Dark Jade
+5115,#0fa89c,Baccarat Green
+5210,#0a9d7a,Trellis Green
+5220,#68c1a7,Silver Sage
+5230,#45b49a,Bottle Green
+5233,#195d55,Field Green
+5324,#165b48,Bright Green
+5326,#174d3e,Evergreen
+5335,#13433b,Swamp
+5374,#1c3e3e,Forest Green
+5411,#00834b,Shamrock
+5415,#007542,Irish Green
+5422,#007552,Swiss Ivy
+5440,#75d59d,Mint
+5450,#94cdac,Basic Seafoam
+5500,#36d357,Limedrop
+5510,#179045,Emerald
+5513,#157c3d,Ming
+5515,#007f50,Kelly
+5531,#639c63,Pear
+5542,#658a7a,Garden Moss
+5552,#708173,Palm Leaf
+5555,#2c4937,Deep Green
+5565,#1e3c2e,Enchanting Forest
+5610,#71af62,Bright Mint
+5613,#009547,Light Kelly
+5633,#3c743d,Lime
+5643,#325c40,Green Dust
+5650,#b6d2a7,Spring Frost
+5664,#5b7065,Willow
+5743,#55745c,Asparagus
+5822,#90ab75,Kiwi
+5830,#96d371,Chartreuse
+5832,#87ab61,Celery
+5833,#687d3c,Limabean
+5866,#363e33,Herb Green
+5912,#81ab3d,Erin Green
+5933,#4f622c,Grasshopper
+5934,#566026,Moss Green
+5940,#b9ff19,Sour Apple
+5944,#2f442d,Backyard Green
+6010,#d7ff00,Mountain Dew
+6011,#b4c952,Tamarack
+6031,#aec402,Limelight
+6043,#7a822a,Yellowgreen
+6051,#afc38d,Jalapeno
+6071,#c1c1a2,Old Lace
+6133,#776a2b,Caper
+6151,#e0e2ac,Lemongrass
+6156,#4b4636,Olive

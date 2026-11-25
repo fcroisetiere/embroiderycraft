@@ -41,7 +41,10 @@ triple-run triangle.
 | `embcraft-dst` | DST reader/writer |
 | `embcraft-stitch` | run / satin / tatami generators |
 | `embcraft-design` | parametric object list → machine-ready pattern |
+| `embcraft-tbf` | Tajima TBF reader/writer (needle order in the file) |
 | `apps/embcraft` | CLI |
+| `apps/embcraft-server` | Shop Library: design library server with a web page and an HTTP API |
+| `station/` | Shop Library install kits: Linux VM (`library-vm`), Windows, Raspberry Pi design stick (`pi-stick`) |
 
 The object list, not the stitch list, is the source of truth: edit a parameter, rebuild. Crates are layered
 (`core` ← `dst`, `stitch` ← `design` ← apps) and have no UI dependencies, so a GUI can be added on top.
@@ -62,6 +65,25 @@ The intention is to build on the ideas, and later the permissively licensed crat
 [VectorCraft](https://github.com/storytold/vectorcraft) vector editor (geometry, path operations, tracing,
 text, UI). See [docs/VECTORCRAFT_REUSE.md](docs/VECTORCRAFT_REUSE.md). This project is **not affiliated with**
 the VectorCraft/ArtCraft team; the source is licensed so that they, or anyone, can adopt it.
+
+## Shop Library (beta)
+
+A server for the shop that holds the designs and drives the machines (`apps/embcraft-server`). Everyone
+opens it in a web browser. It runs on a small Linux computer or VM, or on one Windows PC.
+
+- **Library:** drag in DST, `.embcraft` and TBF files (or whole folders); previews, size, stitches, colours,
+  trims; tags, customers, notes, search; duplicate detection; daily backups.
+- **Threads and colourways:** Isacord 40 built in, your own charts, closest-colour matching, colourways with
+  needles, TBF download with the needles in the file, cost estimate.
+- **Machines and the design stick:** a Raspberry Pi Zero 2 W in the machine's USB port acts as a USB stick;
+  the library prepares its card and sends designs to it over Wi-Fi ([station/pi-stick](station/pi-stick/README.md)).
+- **Odoo:** an optional connection that loads a work order's design on its machine when the work order starts.
+- **HTTP API** for your own tools: [docs/SERVER_API.md](docs/SERVER_API.md).
+
+Install: [station/library-vm/README.md](station/library-vm/README.md) (Linux VM),
+[station/windows/README.txt](station/windows/README.txt) (Windows). Build the kits with
+`bash tools/build-shop-library.sh`. It is a preview: the design stick has been tested on one Tajima
+TFMX-C1501, and TBF files are written without an official specification.
 
 ## License
 

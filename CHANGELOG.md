@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- New **Shop Library** (beta, separate download): a design library server for the shop, with thread
+  colours, colourways, machines, a Raspberry Pi design stick for the machine's USB port, and an optional
+  Odoo connection.
+
 ## 0.2.1 (2026-11-24)
 
 - Wide satin stitches (over 7 mm) are now split at scattered places instead of all at the same

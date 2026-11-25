@@ -4,6 +4,7 @@
 //! writers convert to the machine's own axis. Stitch positions are absolute; machine formats that
 //! store deltas quantise absolute positions first so rounding never accumulates.
 
+pub mod charts;
 mod geom;
 mod pattern;
 pub mod svg;

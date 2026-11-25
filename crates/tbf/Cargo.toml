@@ -1,0 +1,17 @@
+[package]
+name = "embcraft-tbf"
+description = "Tajima TBF embroidery machine file reader and writer (needle order in the file)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+embcraft-core.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+embcraft-dst.workspace = true
+
+[lints]
+workspace = true

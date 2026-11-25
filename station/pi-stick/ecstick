@@ -1,0 +1,274 @@
+#!/bin/bash
+# ecstick: a Raspberry Pi Zero 2 W acting as the USB stick of an embroidery machine.
+# The machine sees an ordinary FAT stick; designs are copied onto it from the network.
+#
+#   ecstick start            make the stick (first time) and plug it into the machine
+#   ecstick load FILE...     replace the designs on the stick with these files
+#   ecstick add FILE...      add these files, keeping the others
+#   ecstick remove NAME...   take these designs off the stick
+#   ecstick clear            remove every design
+#   ecstick list             the designs on the stick
+#   ecstick status           connection, stick and designs
+#   ecstick replug           unplug and plug the stick back (for the machine to look again)
+#   ecstick stop             unplug the stick
+#   ecstick format           wipe and remake the stick (size and format from /etc/ecstick.conf)
+set -euo pipefail
+
+# settings (override in /etc/ecstick.conf)
+IMG=/var/lib/ecstick/stick.img
+SIZE_MB=1024          # stick size
+FS=fat16              # fat16 (at most 2048 MB, read by every machine) or fat32
+LABEL=DESIGNS         # volume name the machine shows
+SWAP=replug           # how a change is shown to the machine: replug (unplug and plug back) or eject
+NAMES=keep            # keep the file names, or short: 8.3 upper-case names for older machines
+AWAY=5                # seconds the stick stays unplugged on a change (a Tajima TFMX-C needs more than 1)
+# shellcheck source=/dev/null
+[ -r /etc/ecstick.conf ] && . /etc/ecstick.conf
+
+G=/sys/kernel/config/usb_gadget/ecstick
+LUN=$G/functions/mass_storage.usb0/lun.0
+STATE=/var/lib/ecstick
+MNT=/run/ecstick/mnt
+OFFSET=1048576        # the partition starts at 1 MiB, as on a real stick
+
+die() { echo "ecstick: $*" >&2; exit 1; }
+
+led() {
+    local l=/sys/class/leds/ACT
+    [ -d "$l" ] || l=/sys/class/leds/led0
+    [ -d "$l" ] || return 0
+    {
+        case $1 in
+            on) echo none > "$l/trigger"; echo 1 > "$l/brightness" ;;
+            off) echo none > "$l/trigger"; echo 0 > "$l/brightness" ;;
+            busy) echo timer > "$l/trigger"; echo 100 > "$l/delay_on"; echo 100 > "$l/delay_off" ;;
+        esac
+    } 2>/dev/null || true
+}
+
+# on when designs are loaded, off when the stick is empty
+led_idle() {
+    if [ -s "$STATE/files" ]; then led on; else led off; fi
+}
+
+make_image() {
+    local bytes=$((SIZE_MB * 1024 * 1024)) type=c fat=32
+    if [ "$FS" = fat16 ]; then
+        [ "$SIZE_MB" -le 2048 ] || die "fat16 sticks are at most 2048 MB"
+        type=e fat=16
+    fi
+    mkdir -p "$STATE"
+    rm -f "$IMG"
+    truncate -s "$bytes" "$IMG"
+    printf 'label: dos\nstart=%d, type=%s\n' $((OFFSET / 512)) "$type" | sfdisk -q "$IMG"
+    mkfs.vfat -F "$fat" -n "$LABEL" --offset $((OFFSET / 512)) "$IMG" $(((bytes - OFFSET) / 1024)) > /dev/null
+    : > "$STATE/files"
+}
+
+udc() { { ls /sys/class/udc 2>/dev/null || true; } | head -n 1; }
+
+make_gadget() {
+    [ -d "$G" ] && return 0
+    modprobe libcomposite
+    mountpoint -q /sys/kernel/config || mount -t configfs none /sys/kernel/config
+    mkdir -p "$G"
+    echo 0x1d6b > "$G/idVendor"    # Linux Foundation
+    echo 0x0104 > "$G/idProduct"   # composite gadget
+    echo 0x0100 > "$G/bcdDevice"
+    echo 0x0200 > "$G/bcdUSB"
+    mkdir -p "$G/strings/0x409"
+    tr -dc '0-9a-f' < /proc/sys/kernel/random/boot_id | head -c 16 > "$G/strings/0x409/serialnumber" || true
+    [ -r /sys/firmware/devicetree/base/serial-number ] &&
+        tr -d '\0' < /sys/firmware/devicetree/base/serial-number > "$G/strings/0x409/serialnumber"
+    echo "EmbroideryCraft" > "$G/strings/0x409/manufacturer"
+    echo "Design stick" > "$G/strings/0x409/product"
+    mkdir -p "$G/configs/c.1/strings/0x409"
+    echo "Storage" > "$G/configs/c.1/strings/0x409/configuration"
+    echo 250 > "$G/configs/c.1/MaxPower"
+    mkdir -p "$G/functions/mass_storage.usb0"
+    echo 1 > "$LUN/removable"
+    echo 0 > "$LUN/cdrom"
+    echo 0 > "$LUN/ro"
+    ln -s "$G/functions/mass_storage.usb0" "$G/configs/c.1/"
+}
+
+plug() {
+    echo "$IMG" > "$LUN/file"
+    [ -n "$(cat "$G/UDC" 2>/dev/null)" ] || udc > "$G/UDC"
+}
+
+unplug() {
+    if [ "$SWAP" = eject ]; then
+        echo 1 > "$LUN/forced_eject" 2>/dev/null || true
+    elif [ -n "$(cat "$G/UDC" 2>/dev/null)" ]; then
+        echo "" > "$G/UDC"
+    fi
+    echo "" > "$LUN/file" 2>/dev/null || true
+}
+
+# run "$@" with the stick unplugged and its FAT mounted at $MNT, then plug it back
+with_stick() {
+    led busy
+    unplug
+    sync
+    mkdir -p "$MNT"
+    mount -o loop,offset=$OFFSET,uid=0,gid=0,umask=022,flush,utf8 "$IMG" "$MNT" ||
+        { plug; led_idle; die "could not open the stick image $IMG"; }
+    local ok=0
+    "$@" || ok=$?
+    (cd "$MNT" && find . -maxdepth 1 -type f ! -name '.*' -printf '%f\n' | sort) > "$STATE/files"
+    sync
+    umount "$MNT"
+    sleep "$AWAY"   # long enough for the machine to see a real unplug before the stick comes back
+    plug
+    wait_attached
+    led_idle
+    return $ok
+}
+
+# give the machine up to 5 s to pick the stick up again, so the status after a change is true
+wait_attached() {
+    local u i
+    u=$(udc)
+    [ -n "$u" ] || return 0
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        [ "$(cat "/sys/class/udc/$u/state" 2>/dev/null)" = configured ] && return 0
+        sleep 0.5
+    done
+}
+
+# the name a file gets on the stick
+stick_name() {
+    local f base ext
+    f=$(basename "$1")
+    [ "$NAMES" = short ] || { echo "$f"; return; }
+    base=${f%.*}
+    ext=${f##*.}
+    [ "$ext" = "$f" ] && ext=""
+    base=$(echo "$base" | tr '[:lower:]' '[:upper:]' | tr -c 'A-Z0-9_\n' '_' | cut -c1-8)
+    ext=$(echo "$ext" | tr '[:lower:]' '[:upper:]' | tr -c 'A-Z0-9\n' '_' | cut -c1-3)
+    echo "${base:-DESIGN}${ext:+.$ext}"
+}
+
+copy_in() {
+    local f n bad=0
+    for f in "$@"; do
+        n=$(stick_name "$f")
+        if cp -- "$f" "$MNT/$n"; then
+            echo "  $n"
+        else
+            echo "  NOT COPIED: $n" >&2
+            bad=1
+        fi
+    done
+    return $bad
+}
+
+clear_out() {
+    find "$MNT" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+}
+
+replace() { clear_out; copy_in "$@"; }
+
+# take designs off by their names on the stick (only plain files at the top)
+remove_names() {
+    local n bad=0
+    for n in "$@"; do
+        case $n in */*|.|..|"") echo "  NOT A DESIGN NAME: $n" >&2; bad=1; continue ;; esac
+        if [ -f "$MNT/$n" ]; then
+            rm -f -- "$MNT/$n"
+            echo "  $n"
+            # the needle file and preview the machine keeps next to a .tbf go with it
+            case $n in
+                *.[tT][bB][fF])
+                    local c
+                    for c in "$MNT/${n%.*}".[cC][tT]0 "$MNT/${n%.*}".[dD][gG][fF]; do
+                        [ -f "$c" ] && rm -f -- "$c" && echo "  ${c##*/}"
+                    done ;;
+            esac
+        else
+            echo "  NOT ON THE STICK: $n" >&2
+            bad=1
+        fi
+    done
+    return $bad
+}
+
+check_files() {
+    [ $# -gt 0 ] || die "name the design files"
+    local f
+    for f in "$@"; do [ -f "$f" ] || die "no file $f"; done
+}
+
+need_ready() {
+    [ -d "$G" ] && [ -f "$IMG" ] || die "the stick is not started: sudo ecstick start"
+}
+
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+cmd=${1:-status}
+shift || true
+case $cmd in
+    start)
+        led busy
+        [ -f "$IMG" ] || make_image
+        make_gadget
+        plug
+        led_idle
+        echo "Stick plugged in: $IMG"
+        ;;
+    stop)
+        need_ready
+        unplug
+        led off
+        echo "Stick unplugged."
+        ;;
+    load)
+        need_ready; check_files "$@"
+        echo "Loading:"
+        with_stick replace "$@"
+        ;;
+    add)
+        need_ready; check_files "$@"
+        echo "Adding:"
+        with_stick copy_in "$@"
+        ;;
+    remove)
+        need_ready
+        [ $# -gt 0 ] || die "name the designs to remove"
+        echo "Removing:"
+        with_stick remove_names "$@"
+        ;;
+    clear)
+        need_ready
+        with_stick clear_out
+        echo "The stick is empty."
+        ;;
+    list)
+        cat "$STATE/files" 2>/dev/null || true
+        ;;
+    replug)
+        need_ready
+        led busy; unplug; sleep "$AWAY"; plug; led_idle
+        echo "Plugged back in."
+        ;;
+    format)
+        [ -d "$G" ] && unplug
+        make_image
+        [ -d "$G" ] && plug
+        led_idle
+        echo "New empty stick: ${SIZE_MB} MB ${FS}, swap by ${SWAP}."
+        ;;
+    status)
+        u=$(udc)
+        echo "USB port:  ${u:-none (is dtoverlay=dwc2 in config.txt, and the cable in the USB port?)}"
+        [ -n "$u" ] && echo "Machine:   $(cat "/sys/class/udc/$u/state" 2>/dev/null) (configured = the machine is using the stick)"
+        if [ -d "$G" ] && [ -n "$(cat "$LUN/file" 2>/dev/null)" ]; then echo "Stick:     plugged in"; else echo "Stick:     unplugged"; fi
+        echo "Settings:  ${SIZE_MB} MB ${FS}, label ${LABEL}, swap by ${SWAP} (${AWAY} s), names ${NAMES}"
+        echo "Designs:"
+        sed 's/^/  /' "$STATE/files" 2>/dev/null || true
+        ;;
+    *)
+        sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+        exit 2
+        ;;
+esac
