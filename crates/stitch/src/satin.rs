@@ -218,6 +218,28 @@ fn hermite(r: &[(Point, bool)], k: usize, t: f64) -> Point {
         + m1 * (t3 - t2)
 }
 
+/// Where crossing `index` is cut, as a fraction of one piece, measured from rail `a`.
+/// Stepping by 3/5 keeps neighbouring crossings far apart, so the cuts do not form a
+/// visible line (straight groove or regular diagonal) down the column.
+const SPLIT_PHASES: [f64; 5] = [0.0, 0.6, 0.2, 0.8, 0.4];
+
+/// Inner penetrations, ordered from `pa` to `pb`, that cut a crossing longer than
+/// `max_len` (auto split). Every piece stays at or under `max_len`; the cuts are
+/// shifted from crossing to crossing so they are scattered across the column.
+fn split_points(pa: Point, pb: Point, max_len: f64, index: usize) -> Vec<Point> {
+    let len = pa.dist(pb);
+    if max_len <= 1e-6 || len <= max_len {
+        return Vec::new();
+    }
+    let n = (len / max_len).ceil() as usize;
+    let phase = SPLIT_PHASES[index % SPLIT_PHASES.len()];
+    // phase 0: n equal pieces; otherwise n + 1 pieces with shorter ones at both ends.
+    let first = if phase == 0.0 { 1 } else { 0 };
+    (first..n)
+        .map(|j| pa.lerp(pb, (j as f64 + phase) / n as f64))
+        .collect()
+}
+
 /// Underlay and top stitches of a column. `at(t)` gives the two edge points a fraction `t` of the
 /// way along; `longest` is the column's length (mm), which sets how many stitches there are.
 fn sew(at: &dyn Fn(f64) -> (Point, Point), longest: f64, p: &SatinParams) -> Vec<Point> {
@@ -264,11 +286,14 @@ fn sew(at: &dyn Fn(f64) -> (Point, Point), longest: f64, p: &SatinParams) -> Vec
         let (pa, pb) = at(i as f64 / n as f64);
         let d = (pa - pb).unit().unwrap_or(Point::ZERO);
         let (pa, pb) = (pa + d * p.pull_comp, pb - d * p.pull_comp);
+        let mid = split_points(pa, pb, p.max_stitch, i);
         if i % 2 == 0 {
             top.push(pa);
+            top.extend(mid);
             top.push(pb);
         } else {
             top.push(pb);
+            top.extend(mid.into_iter().rev());
             top.push(pa);
         }
     }
@@ -335,6 +360,88 @@ mod tests {
         let r = &satin(&a, &b, &p, None)[0];
         let max = r.windows(2).map(|w| w[0].dist(w[1])).fold(0.0, f64::max);
         assert!(max <= p.max_stitch + 1e-9);
+    }
+
+    #[test]
+    fn long_crossings_are_split_at_staggered_places() {
+        // 16 mm wide column along x: crossings run in y from -8 to +8.
+        let (a, b) = rails_from_centerline(&[Point::new(0.0, 0.0), Point::new(10.0, 0.0)], 16.0);
+        let p = SatinParams {
+            underlay: SatinUnderlay::None,
+            pull_comp: 0.0,
+            ..SatinParams::default()
+        };
+        let r = &satin(&a, &b, &p, None)[0];
+        let max = r.windows(2).map(|w| w[0].dist(w[1])).fold(0.0, f64::max);
+        assert!(max <= p.max_stitch + 1e-9);
+        // Inner cuts (not on a rail), rounded to 0.1 mm across the column.
+        let mut ys: Vec<i64> = r
+            .iter()
+            .filter(|q| q.y.abs() < 8.0 - 1e-6)
+            .map(|q| (q.y * 10.0).round() as i64)
+            .collect();
+        let inner = ys.len();
+        ys.sort_unstable();
+        ys.dedup();
+        // Splitting at the same spot every time would give only 2 positions.
+        assert!(ys.len() >= 8, "cuts at only {} places", ys.len());
+        assert!(inner > 2 * 25, "every crossing should be cut");
+        // Neighbouring crossings never share a cut.
+        let cuts = |x0: f64| -> Vec<i64> {
+            let mut v: Vec<i64> = r
+                .iter()
+                .filter(|q| q.y.abs() < 8.0 - 1e-6 && (q.x - x0).abs() < 1e-6)
+                .map(|q| (q.y * 10.0).round() as i64)
+                .collect();
+            v.sort_unstable();
+            v
+        };
+        let xs: Vec<f64> = {
+            let mut v: Vec<f64> = r
+                .iter()
+                .filter(|q| q.y.abs() >= 8.0 - 1e-6)
+                .map(|q| q.x)
+                .collect();
+            v.dedup_by(|x, y| (*x - *y).abs() < 1e-9);
+            v
+        };
+        for w in xs.windows(2) {
+            let (c0, c1) = (cuts(w[0]), cuts(w[1]));
+            assert!(c0.iter().all(|y| !c1.contains(y)), "{c0:?} vs {c1:?}");
+        }
+    }
+
+    #[test]
+    fn narrow_crossings_are_not_split() {
+        let (a, b) = straight();
+        let p = SatinParams {
+            underlay: SatinUnderlay::None,
+            ..SatinParams::default()
+        };
+        let r = &satin(&a, &b, &p, None)[0];
+        assert!(r.iter().all(|q| (q.y.abs() - 2.2).abs() < 1e-9));
+    }
+
+    #[test]
+    fn column_tool_splits_wide_stitches_at_staggered_places() {
+        let a = [Point::new(0.0, -8.0), Point::new(10.0, -8.0)];
+        let b = [Point::new(0.0, 8.0), Point::new(10.0, 8.0)];
+        let p = SatinParams {
+            underlay: SatinUnderlay::None,
+            pull_comp: 0.0,
+            ..SatinParams::default()
+        };
+        let r = &column(&a, &b, &p, None)[0];
+        let max = r.windows(2).map(|w| w[0].dist(w[1])).fold(0.0, f64::max);
+        assert!(max <= p.max_stitch + 1e-9);
+        let mut ys: Vec<i64> = r
+            .iter()
+            .filter(|q| q.y.abs() < 8.0 - 1e-6)
+            .map(|q| (q.y * 10.0).round() as i64)
+            .collect();
+        ys.sort_unstable();
+        ys.dedup();
+        assert!(ys.len() >= 8, "cuts at only {} places", ys.len());
     }
 
     #[test]

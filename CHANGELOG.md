@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Wide satin stitches (over 7 mm) are now split at scattered places instead of all at the same
+  spot, so they no longer leave a straight groove down the column. Also in Satin column.
+
 ## 0.2.0 (2026-11-24)
 
 - Curve tool: click a curved point again to make the next line leave it straight (a sharp
