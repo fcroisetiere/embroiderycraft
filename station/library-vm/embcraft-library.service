@@ -1,0 +1,23 @@
+# The EmbroideryCraft design library, as a service. install.sh puts it in /etc/systemd/system.
+[Unit]
+Description=EmbroideryCraft Library
+After=network-online.target remote-fs.target
+Wants=network-online.target
+
+[Service]
+User=embcraft
+Group=embcraft
+ExecStart=/usr/local/bin/embcraft-server --data /var/lib/embcraft-library --listen 0.0.0.0:8080
+# the server stops cleanly on Ctrl+C
+KillSignal=SIGINT
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+# the library, and where backup folders may be (NAS shares mounted under /mnt, USB disks under /media)
+ReadWritePaths=/var/lib/embcraft-library -/mnt -/media -/srv
+
+[Install]
+WantedBy=multi-user.target

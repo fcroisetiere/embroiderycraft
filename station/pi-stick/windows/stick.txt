@@ -1,0 +1,2 @@
+# The stick to send to (user@name). For a second machine: shop@ecstick2.local
+shop@ecstick1.local

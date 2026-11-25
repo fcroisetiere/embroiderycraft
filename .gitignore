@@ -5,3 +5,4 @@
 /v0.2
 *.tar.gz
 *.zip
+!station/pi-stick/*.dst

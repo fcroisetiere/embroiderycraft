@@ -1,0 +1,27 @@
+[package]
+name = "embcraft-server"
+description = "EmbroideryCraft shop server: the design library, with a web page and an HTTP API"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+embcraft-core.workspace = true
+embcraft-dst.workspace = true
+embcraft-tbf.workspace = true
+embcraft-design.workspace = true
+embcraft-doc.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+axum = { version = "0.8.9", features = ["multipart"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+sha2 = "0.11.0"
+argon2 = "0.6.0"
+tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd", "png-format"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif", "bmp"] }
+ureq = { version = "3", default-features = false, features = ["rustls", "json"] }
+
+[lints]
+workspace = true
